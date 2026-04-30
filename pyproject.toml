@@ -1,0 +1,27 @@
+[build-system]
+requires = ["hatchling>=1.25"]
+build-backend = "hatchling.build"
+
+[project]
+name = "ai-privacy-anonymizer"
+version = "0.1.0"
+description = "Local-first privacy anonymizer for Italian PII."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Sergio Dogliani" }]
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0"]
+rich = ["rich>=13.0"]
+
+[project.scripts]
+privacy-anonymizer = "privacy_anonymizer.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/privacy_anonymizer"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
