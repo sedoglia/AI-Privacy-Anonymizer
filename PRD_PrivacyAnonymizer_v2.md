@@ -405,7 +405,7 @@ gpu   = []   # torcia GPU rilevata automaticamente
 | Storage (modelli) | ~5 GB (OPF 3GB + GLiNER 300MB + spaCy 700MB) | SSD |
 | OS | Windows 10 / Ubuntu 20.04 | Windows 11 / Ubuntu 22.04 |
 | GPU (opzionale) | — | CUDA 11.8+ (4GB VRAM min per OPF FP16) |
-| Tesseract OCR | v4.0+ (per immagini e PDF scansionati) | v5.x |
+| OCR | RapidOCR (incluso in `[documents]`, ONNX runtime, nessun binario esterno) | — |
 | LibreOffice | Opzionale (solo per `.doc`/`.xls` legacy) | 7.x |
 
 ### 10.3 Installazione

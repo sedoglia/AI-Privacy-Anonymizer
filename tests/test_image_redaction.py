@@ -6,18 +6,18 @@ from privacy_anonymizer.io.images import ImageAdapter
 from privacy_anonymizer.masking import ReplacementSpan
 
 
-class FakePytesseract:
-    class Output:
-        DICT = "dict"
+class FakeRapidOCROutput:
+    """Mimics RapidOCR 3.x output object."""
 
-    def image_to_data(self, image, lang, output_type):
-        return {
-            "text": ["mario.rossi@example.com"],
-            "left": [10],
-            "top": [10],
-            "width": [140],
-            "height": [20],
-        }
+    def __init__(self):
+        self.boxes = [[[10, 10], [150, 10], [150, 30], [10, 30]]]
+        self.txts = ["mario.rossi@example.com"]
+        self.scores = [0.99]
+
+
+class FakeRapidOCR:
+    def __call__(self, image):
+        return FakeRapidOCROutput()
 
 
 def test_image_adapter_redacts_ocr_word_boxes(monkeypatch, tmp_path: Path) -> None:
@@ -27,7 +27,7 @@ def test_image_adapter_redacts_ocr_word_boxes(monkeypatch, tmp_path: Path) -> No
     destination = tmp_path / "clean.png"
     Image.new("RGB", (220, 80), "white").save(source)
 
-    monkeypatch.setattr(images_module, "_import_ocr", lambda: (Image, FakePytesseract()))
+    monkeypatch.setattr(images_module, "_import_ocr", lambda: (Image, FakeRapidOCR()))
 
     result = ImageAdapter().write_anonymized(
         source,

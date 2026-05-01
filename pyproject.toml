@@ -28,7 +28,8 @@ documents = [
   "pypdf>=4.0",
   "reportlab>=4.0",
   "pillow>=10.0",
-  "pytesseract>=0.3.10",
+  "rapidocr>=3.0",
+  "onnxruntime>=1.17",
   "striprtf>=0.0.26",
   "extract-msg>=0.48",
   "xlrd>=2.0",
@@ -53,7 +54,8 @@ recommended = [
   "pypdf>=4.0",
   "reportlab>=4.0",
   "pillow>=10.0",
-  "pytesseract>=0.3.10",
+  "rapidocr>=3.0",
+  "onnxruntime>=1.17",
   "striprtf>=0.0.26",
   "extract-msg>=0.48",
   "xlrd>=2.0",
@@ -66,9 +68,16 @@ recommended = [
   "rich>=13.0",
   "gliner>=0.2.5",
 ]
+opf = [
+  # OpenAI Privacy Filter (https://github.com/openai/privacy-filter).
+  # NOTE: the package name `opf` collides with an unrelated PyPI project
+  # ("Open Provenance Format"); always install via this git reference, never
+  # via plain `pip install opf`.
+  "opf @ git+https://github.com/openai/privacy-filter",
+]
 full = [
   "ai-privacy-anonymizer[recommended]",
-  "opf @ git+https://github.com/openai/privacy-filter",
+  "ai-privacy-anonymizer[opf]",
 ]
 
 [project.scripts]

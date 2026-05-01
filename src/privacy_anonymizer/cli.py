@@ -204,7 +204,7 @@ def _print_setup_status(download_models: bool = False) -> None:
     _print_dependency_status("PDF coordinate redaction", "fitz", "documents")
     _print_dependency_status("PDF read", "pypdf", "documents")
     _print_dependency_status("PDF write", "reportlab", "documents")
-    _print_dependency_status("Image/OCR bridge", "pytesseract", "documents")
+    _print_dependency_status("Image/OCR engine", "rapidocr", "documents")
     _print_dependency_status("MSG", "extract_msg", "documents")
     _print_dependency_status("XLS legacy", "xlrd", "documents")
     _print_dependency_status("Docling parser", "docling", "docling")

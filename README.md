@@ -148,7 +148,7 @@ L'insieme completo delle categorie emesse verso il masking engine, dopo normaliz
 | Excel | `.xlsx` | `openpyxl` | `openpyxl` | Celle (stringhe) + nomi foglio + commenti autore |
 | PowerPoint | `.pptx` | `python-pptx` | `python-pptx` | Testo shape + note relatore |
 | PDF selezionabile | `.pdf` | `pypdf` | PyMuPDF overlay | Redazione a coordinate sui bounding box originali |
-| Immagini | `.png` `.jpg` `.jpeg` `.tiff` `.bmp` | Tesseract OCR | Pillow | Redazione a coordinate OCR; fallback a immagine testo plano |
+| Immagini | `.png` `.jpg` `.jpeg` `.tiff` `.bmp` | RapidOCR (ONNX) | Pillow | Redazione a coordinate OCR; fallback a immagine testo plano |
 | Email | `.eml` | stdlib `email` | stdlib `email` | From/To/Cc/Subject + body |
 | XML/FatturaPA | `.xml` | `xml.etree` | `xml.etree` | Testo e attributi; struttura XML preservata |
 | RTF | `.rtf` | `striprtf` | built-in minimal | Ricostruzione RTF semplificata |
@@ -833,7 +833,7 @@ vault = plan.entity_vault()  # dict {placeholder: {label, original}}
 | Storage modelli | — | ~300 MB | ~3.3 GB |
 | OS | Windows 10 / Ubuntu 20.04 / macOS 12 | stesso | stesso |
 | GPU | Non necessaria | Opzionale (CUDA 11.8+) | Opzionale (4 GB VRAM) |
-| Tesseract OCR | — | — | v4.0+ (per immagini) |
+| OCR engine | — | RapidOCR (ONNX, in `[documents]`) | RapidOCR (ONNX, in `[documents]`) |
 | LibreOffice | — | — | Opzionale (per `.doc` legacy) |
 
 ---
@@ -880,7 +880,7 @@ src/privacy_anonymizer/
     ├── text_files.py        # .txt .md .log .csv
     ├── office.py            # .docx .xlsx .pptx
     ├── pdf.py               # .pdf (pypdf + PyMuPDF + ReportLab)
-    ├── images.py            # .png .jpg .jpeg .tiff .bmp (Pillow + Tesseract)
+    ├── images.py            # .png .jpg .jpeg .tiff .bmp (Pillow + RapidOCR)
     ├── email_files.py       # .eml .msg
     ├── legacy.py            # .doc .xls .rtf
     ├── xml_files.py         # .xml (FatturaPA)

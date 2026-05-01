@@ -16,7 +16,7 @@ Known runtime caveats:
 
 - OPF must be installed from its upstream package/repository.
 - GLiNER downloads model weights at first use.
-- OCR requires Tesseract installed on the host.
+- OCR uses RapidOCR (ONNX runtime, bundled — no native binaries required); models download on first use.
 - Docling is optional and may download/initialize models depending on its configuration.
 - Complex PDF/image layouts can still require manual QA; audit warnings are emitted when fallback paths are used.
 

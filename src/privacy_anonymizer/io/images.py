@@ -12,9 +12,12 @@ class ImageAdapter(FileAdapter):
     extensions = {".png", ".jpg", ".jpeg", ".tiff", ".tif", ".bmp"}
 
     def read_text(self, path: Path) -> FileContent:
-        Image, pytesseract = _import_ocr()
-        image = Image.open(path)
-        text = pytesseract.image_to_string(image, lang="ita+eng")
+        Image, engine = _import_ocr()
+        import numpy as np  # type: ignore[import-not-found]
+
+        image = Image.open(path).convert("RGB")
+        rows = _normalize_rapidocr_result(engine(np.array(image)))
+        text = "\n".join(text_value for _, text_value, _ in rows if text_value)
         warnings = []
         if not text.strip():
             warnings.append("OCR non ha estratto testo dall'immagine.")
@@ -73,11 +76,21 @@ def _wrap_lines(text: str, max_chars: int) -> list[str]:
 
 def _import_ocr():
     Image, _, _ = _import_pillow()
+    engine = _load_rapidocr()
+    return Image, engine
+
+
+def _load_rapidocr():
     try:
-        import pytesseract
+        from rapidocr_onnxruntime import RapidOCR  # type: ignore[import-not-found]
+        return RapidOCR()
+    except ImportError:
+        pass
+    try:
+        from rapidocr import RapidOCR  # type: ignore[import-not-found]
+        return RapidOCR()
     except ImportError as exc:
-        raise MissingOptionalDependencyError("pytesseract", "documents") from exc
-    return Image, pytesseract
+        raise MissingOptionalDependencyError("rapidocr", "documents") from exc
 
 
 def _import_pillow():
@@ -85,17 +98,19 @@ def _import_pillow():
         from PIL import Image, ImageDraw, ImageFont
     except ImportError as exc:
         raise MissingOptionalDependencyError("pillow", "documents") from exc
+    Image.MAX_IMAGE_PIXELS = None
     return Image, ImageDraw, ImageFont
 
 
 def _write_coordinate_redacted_image(source: Path, destination: Path, replacements: list[ReplacementSpan]) -> int:
     Image, ImageDraw, ImageFont = _import_pillow()
-    _, pytesseract = _import_ocr()
+    _, engine = _import_ocr()
+    import numpy as np  # type: ignore[import-not-found]
+
     image = Image.open(source).convert("RGB")
     draw = ImageDraw.Draw(image)
-    data = pytesseract.image_to_data(image, lang="ita+eng", output_type=pytesseract.Output.DICT)
-    words = [_OcrWord.from_data(data, index) for index in range(len(data.get("text", [])))]
-    words = [word for word in words if word.text]
+    rows = _normalize_rapidocr_result(engine(np.array(image)))
+    words = _rapidocr_words(rows)
     redacted = 0
     try:
         font = ImageFont.load_default()
@@ -103,10 +118,10 @@ def _write_coordinate_redacted_image(source: Path, destination: Path, replacemen
         font = None
     for replacement in replacements:
         for match in _find_word_matches(words, replacement.original):
-            left = min(word.left for word in match)
-            top = min(word.top for word in match)
-            right = max(word.left + word.width for word in match)
-            bottom = max(word.top + word.height for word in match)
+            left = min(w["left"] for w in match)
+            top = min(w["top"] for w in match)
+            right = max(w["left"] + w["width"] for w in match)
+            bottom = max(w["top"] + w["height"] for w in match)
             fill = "black" if set(replacement.replacement) == {"█"} else "white"
             draw.rectangle((left, top, right, bottom), fill=fill)
             if fill == "white":
@@ -117,32 +132,74 @@ def _write_coordinate_redacted_image(source: Path, destination: Path, replacemen
     return redacted
 
 
-class _OcrWord:
-    def __init__(self, text: str, left: int, top: int, width: int, height: int) -> None:
-        self.text = text
-        self.left = left
-        self.top = top
-        self.width = width
-        self.height = height
+def _normalize_rapidocr_result(raw) -> list[tuple]:
+    """Return a list of (box, text, score) tuples from any RapidOCR API version."""
+    if raw is None:
+        return []
+    boxes = getattr(raw, "boxes", None)
+    txts = getattr(raw, "txts", None)
+    scores = getattr(raw, "scores", None)
+    if boxes is not None and txts is not None:
+        scores = scores if scores is not None else [None] * len(txts)
+        return list(zip(boxes, txts, scores))
+    if isinstance(raw, tuple) and len(raw) >= 1:
+        inner = raw[0]
+        if not inner:
+            return []
+        return [tuple(item) for item in inner]
+    if isinstance(raw, list):
+        return [tuple(item) for item in raw]
+    return []
 
-    @classmethod
-    def from_data(cls, data: dict, index: int) -> "_OcrWord":
-        return cls(
-            text=str(data["text"][index]).strip(),
-            left=int(data["left"][index]),
-            top=int(data["top"][index]),
-            width=int(data["width"][index]),
-            height=int(data["height"][index]),
-        )
+
+def _rapidocr_words(rows: list[tuple]) -> list[dict]:
+    """Convert normalized OCR rows (box, text, score) into per-token word dicts.
+
+    Box is a 4-point polygon; we proportionally allocate width to each whitespace-split token.
+    """
+    words: list[dict] = []
+    for item in rows:
+        if len(item) < 2:
+            continue
+        box, text = item[0], item[1]
+        if not text or box is None:
+            continue
+        xs = [p[0] for p in box]
+        ys = [p[1] for p in box]
+        left, right = min(xs), max(xs)
+        top, bottom = min(ys), max(ys)
+        line_width = right - left
+        line_height = bottom - top
+        tokens = text.split()
+        if not tokens:
+            continue
+        total_chars = sum(len(t) for t in tokens) + max(len(tokens) - 1, 0)
+        if total_chars <= 0:
+            continue
+        cursor = left
+        for index, token in enumerate(tokens):
+            token_chars = len(token) + (1 if index < len(tokens) - 1 else 0)
+            token_width = line_width * (token_chars / total_chars)
+            words.append(
+                {
+                    "text": token,
+                    "left": cursor,
+                    "top": top,
+                    "width": token_width,
+                    "height": line_height,
+                }
+            )
+            cursor += token_width
+    return words
 
 
-def _find_word_matches(words: list[_OcrWord], original: str) -> list[list[_OcrWord]]:
+def _find_word_matches(words: list[dict], original: str) -> list[list[dict]]:
     target = [_normalize_token(token) for token in original.split()]
     target = [token for token in target if token]
     if not target:
         return []
-    normalized_words = [_normalize_token(word.text) for word in words]
-    matches: list[list[_OcrWord]] = []
+    normalized_words = [_normalize_token(word["text"]) for word in words]
+    matches: list[list[dict]] = []
     for index in range(0, len(words) - len(target) + 1):
         if normalized_words[index : index + len(target)] == target:
             matches.append(words[index : index + len(target)])
