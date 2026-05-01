@@ -230,11 +230,31 @@ pip install "ai-privacy-anonymizer[webui]"
 pip install "ai-privacy-anonymizer[api]"
 ```
 
-### Everything
+### Everything except OPF (`[all]` extra)
 
 ```bash
 pip install "ai-privacy-anonymizer[all]"
 ```
+
+Installs office, documents, ml (GLiNER), docling, webui, api, rich. **Excludes OPF** (Layer 1) to avoid the ~3 GB download for users who don't need it.
+
+### Everything including OPF (`[full]` extra)
+
+```bash
+pip install "ai-privacy-anonymizer[full]"
+```
+
+Installs the `[all]` extra **plus** OPF from the official repository (`git+https://github.com/openai/privacy-filter`). Requires ~5 GB total between dependencies and models.
+
+### One-shot command (alternative to `[full]`)
+
+If you already have the base package installed, you can install everything with:
+
+```bash
+privacy-anonymizer --install-full
+```
+
+This internally runs `pip install "ai-privacy-anonymizer[all]"` followed by the OPF installation from git.
 
 ### Local development
 
@@ -245,7 +265,9 @@ pip install -e ".[dev,office,documents,ml]"
 pytest
 ```
 
-### Layer 1 OPF (external installation)
+### Layer 1 OPF only (external, separate installation)
+
+If you don't want `[full]` and prefer to install OPF separately:
 
 ```bash
 pip install git+https://github.com/openai/privacy-filter

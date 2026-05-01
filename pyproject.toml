@@ -66,6 +66,10 @@ all = [
   "rich>=13.0",
   "gliner>=0.2.5",
 ]
+full = [
+  "ai-privacy-anonymizer[all]",
+  "opf @ git+https://github.com/openai/privacy-filter",
+]
 
 [project.scripts]
 privacy-anonymizer = "privacy_anonymizer.cli:main"

@@ -41,7 +41,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--api", action="store_true", help="Avvia API REST locale FastAPI")
     parser.add_argument("--low-memory", action="store_true", help="Riduce l'uso di RAM elaborando i layer in sequenza")
     parser.add_argument("--wipe-cache", action="store_true", help="Cancella la cache locale dei modelli/parser")
-    parser.add_argument("--export-vault", help="Scrive su file JSON il vault entity → placeholder (per modalità hash)")
+    parser.add_argument("--export-vault", help="Scrive su file JSON il vault entity -> placeholder (per modalita' hash)")
+    parser.add_argument(
+        "--install-full",
+        action="store_true",
+        help="Installa tutti gli extra (office, documents, ml, docling, webui, api) e OPF in un unico passaggio",
+    )
     return parser
 
 
@@ -57,6 +62,9 @@ def main(argv: list[str] | None = None) -> int:
         wiped = _wipe_cache()
         print(f"Cache cancellata: {wiped} elementi.")
         return 0
+
+    if args.install_full:
+        return _install_full()
 
     if args.setup or args.download_models:
         _print_setup_status(args.download_models)
@@ -224,6 +232,31 @@ def _maybe_export_vault(destination: str | None, replacements) -> None:
         for replacement in replacements
     }
     Path(destination).write_text(json.dumps(vault, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def _install_full() -> int:
+    import subprocess
+
+    print("Installazione completa: tutti gli extra + OPF.")
+    print("Questo richiederà alcuni GB di download (OPF ~3GB, GLiNER ~300MB, Docling ~500MB).")
+    extras_cmd = [sys.executable, "-m", "pip", "install", "ai-privacy-anonymizer[all]"]
+    opf_cmd = [sys.executable, "-m", "pip", "install", "git+https://github.com/openai/privacy-filter"]
+    print(f"  → {' '.join(extras_cmd)}")
+    extras_result = subprocess.run(extras_cmd, check=False)
+    if extras_result.returncode != 0:
+        print("Errore: installazione extra fallita.", file=sys.stderr)
+        return extras_result.returncode
+    print(f"  → {' '.join(opf_cmd)}")
+    opf_result = subprocess.run(opf_cmd, check=False)
+    if opf_result.returncode != 0:
+        print(
+            "Attenzione: OPF non installato. Verifica connettività e disponibilità del repository "
+            "https://github.com/openai/privacy-filter",
+            file=sys.stderr,
+        )
+        return opf_result.returncode
+    print("Installazione completa terminata.")
+    return 0
 
 
 def _wipe_cache() -> int:
