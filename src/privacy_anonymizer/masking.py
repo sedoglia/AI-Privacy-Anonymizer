@@ -18,6 +18,8 @@ PREFIXES = {
     "EMAIL": "EMAIL",
     "PEC": "PEC",
     "IP_ADDRESS": "IP",
+    "TESSERA_SANITARIA": "TS",
+    "MATRICOLA_INPS": "MATRICOLA",
 }
 
 
@@ -62,6 +64,15 @@ class ReplacementSpan:
 class MaskingPlan:
     text: str
     replacements: list[ReplacementSpan]
+
+    def entity_vault(self) -> dict[str, dict[str, str]]:
+        vault: dict[str, dict[str, str]] = {}
+        for replacement in self.replacements:
+            vault[replacement.replacement] = {
+                "label": replacement.label,
+                "original": replacement.original,
+            }
+        return vault
 
 
 def mask_text(text: str, spans: list[DetectionSpan], mode: MaskingMode | str = MaskingMode.REPLACE) -> str:

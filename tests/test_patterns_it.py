@@ -37,3 +37,10 @@ def test_detector_finds_structured_italian_pii() -> None:
         "CELL_IT",
         "TARGA_IT",
     }
+
+
+def test_detector_finds_tessera_sanitaria_and_matricola_inps() -> None:
+    text = "Tessera 80380030001234567890 matricola INPS 12345678 attiva."
+    labels = set(labels_for(text))
+    assert "TESSERA_SANITARIA" in labels
+    assert "MATRICOLA_INPS" in labels

@@ -195,6 +195,9 @@ class Anonymizer:
                 "by_category": category_counts(spans),
             },
             "metadata_stripped": not self.config.keep_metadata if metadata_stripped is None else metadata_stripped,
+            "track_changes_accepted": not self.config.keep_metadata,
+            "opf_recall_mode": self.config.opf_recall_mode if self.config.opf_enabled else None,
+            "low_memory": self.config.low_memory,
             "warnings": warnings or [],
         }
 

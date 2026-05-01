@@ -39,6 +39,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--evaluate", help="Valuta un dataset JSONL con campi text e labels")
     parser.add_argument("--webui", action="store_true", help="Avvia Web UI Gradio locale")
     parser.add_argument("--api", action="store_true", help="Avvia API REST locale FastAPI")
+    parser.add_argument("--low-memory", action="store_true", help="Riduce l'uso di RAM elaborando i layer in sequenza")
+    parser.add_argument("--wipe-cache", action="store_true", help="Cancella la cache locale dei modelli/parser")
+    parser.add_argument("--export-vault", help="Scrive su file JSON il vault entity → placeholder (per modalità hash)")
     return parser
 
 
@@ -48,6 +51,11 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.supported_formats:
         print("\n".join(supported_extensions()))
+        return 0
+
+    if args.wipe_cache:
+        wiped = _wipe_cache()
+        print(f"Cache cancellata: {wiped} elementi.")
         return 0
 
     if args.setup or args.download_models:
@@ -91,6 +99,7 @@ def main(argv: list[str] | None = None) -> int:
             pattern_enabled=pattern_enabled,
             keep_metadata=args.keep_metadata,
             recursive=args.recursive,
+            low_memory=args.low_memory,
         ),
         device=args.device,
     )
@@ -98,11 +107,14 @@ def main(argv: list[str] | None = None) -> int:
     try:
         if args.text is not None:
             result = anonymizer.analyze_text(args.text)
+            _maybe_export_vault(args.export_vault, result.replacements or [])
             if args.json:
                 print(json.dumps(result.audit_report, indent=2, ensure_ascii=False))
             else:
                 print(result.anonymized_text)
                 _print_summary(result.audit_report)
+                if args.show_map:
+                    _print_entity_map(result.replacements or [])
             return 0
 
         input_path = Path(args.input)
@@ -127,6 +139,7 @@ def main(argv: list[str] | None = None) -> int:
         output_dir = output if output and (output.suffix == "" or output.is_dir()) else None
         output_path = output if output and output_dir is None else None
         result = anonymizer.process_file(input_path, output_dir=output_dir, output_path=output_path, dry_run=args.dry_run)
+        _maybe_export_vault(args.export_vault, result.replacements or [])
         if args.compliance_report:
             write_compliance_report(result.audit_report, args.compliance_report)
 
@@ -134,6 +147,8 @@ def main(argv: list[str] | None = None) -> int:
             print(json.dumps(result.audit_report, indent=2, ensure_ascii=False))
         else:
             _print_summary(result.audit_report)
+            if args.show_map:
+                _print_entity_map(result.replacements or [])
             if args.dry_run:
                 print("Dry-run completato: nessun file scritto.")
             elif result.output_path:
@@ -184,6 +199,46 @@ def _print_setup_status(download_models: bool = False) -> None:
 def _print_dependency_status(label: str, module: str, extra: str) -> None:
     status = "ok" if importlib.util.find_spec(module) else f"mancante ({extra})"
     print(f"{label}: {status}")
+
+
+def _print_entity_map(replacements) -> None:
+    if not replacements:
+        print("Mappa entità: nessuna entità rilevata.")
+        return
+    print("Mappa entità (categorie e placeholder, nessun valore originale):")
+    seen: dict[str, str] = {}
+    for replacement in replacements:
+        seen.setdefault(replacement.replacement, replacement.label)
+    for placeholder, label in sorted(seen.items()):
+        print(f"  {placeholder}  ←  {label}")
+
+
+def _maybe_export_vault(destination: str | None, replacements) -> None:
+    if not destination:
+        return
+    vault = {
+        replacement.replacement: {
+            "label": replacement.label,
+            "original": replacement.original,
+        }
+        for replacement in replacements
+    }
+    Path(destination).write_text(json.dumps(vault, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def _wipe_cache() -> int:
+    import shutil
+
+    candidates = [
+        Path.home() / ".cache" / "privacy_anonymizer",
+        Path.cwd() / ".privacy_anonymizer_cache",
+    ]
+    removed = 0
+    for path in candidates:
+        if path.exists():
+            shutil.rmtree(path, ignore_errors=True)
+            removed += 1
+    return removed
 
 
 def _launch_api() -> None:

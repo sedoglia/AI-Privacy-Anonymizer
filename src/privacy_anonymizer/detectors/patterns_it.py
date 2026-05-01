@@ -20,6 +20,11 @@ TEL_IT_PATTERN = re.compile(
 )
 EMAIL_PATTERN = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I)
 IPV4_PATTERN = re.compile(r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b")
+TESSERA_SANITARIA_PATTERN = re.compile(r"(?<!\d)80[0-9]{18}(?!\d)")
+MATRICOLA_INPS_PATTERN = re.compile(
+    r"\b(?:matricola(?:\s+inps)?|inps)\s*[:#]?\s*([0-9]{8,9})\b",
+    re.I,
+)
 
 
 CF_ODD = {
@@ -67,6 +72,8 @@ class ItalianPatternDetector:
         spans.extend(self._detect_simple(text, TEL_IT_PATTERN, "TEL_IT"))
         spans.extend(self._detect_email(text))
         spans.extend(self._detect_ipv4(text))
+        spans.extend(self._detect_simple(text, TESSERA_SANITARIA_PATTERN, "TESSERA_SANITARIA"))
+        spans.extend(self._detect_matricola_inps(text))
         return sorted(spans, key=lambda span: (span.start, span.end))
 
     def _detect_simple(self, text: str, pattern: re.Pattern[str], label: str) -> Iterable[DetectionSpan]:
@@ -101,6 +108,10 @@ class ItalianPatternDetector:
             value = match.group(0).lower()
             label = "PEC" if ".pec." in value or value.endswith(".pec.it") else "EMAIL"
             yield DetectionSpan(match.start(), match.end(), label, self.source)
+
+    def _detect_matricola_inps(self, text: str) -> Iterable[DetectionSpan]:
+        for match in MATRICOLA_INPS_PATTERN.finditer(text):
+            yield DetectionSpan(match.start(1), match.end(1), "MATRICOLA_INPS", self.source)
 
     def _detect_ipv4(self, text: str) -> Iterable[DetectionSpan]:
         for match in IPV4_PATTERN.finditer(text):
