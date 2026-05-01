@@ -1,5 +1,15 @@
 from __future__ import annotations
 
+import logging
+import os
+import warnings
+
+# Mirror the same suppression applied in gliner_detector so that whichever
+# detector is imported first establishes the filters for the whole process.
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+logging.getLogger("transformers.tokenization_utils_base").setLevel(logging.ERROR)
+warnings.filterwarnings("ignore", message=".*resume_download.*", category=FutureWarning)
+
 from privacy_anonymizer.models import DetectionSpan
 
 # Mapping from upstream OPF labels (openai/privacy-filter) to project categories.

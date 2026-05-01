@@ -3,6 +3,9 @@ from pathlib import Path
 import pytest
 
 from privacy_anonymizer import Anonymizer
+from privacy_anonymizer.config import LayerConfig
+
+_PATTERN_ONLY = LayerConfig(opf_enabled=False, gliner_enabled=False, parallel=False)
 
 
 def test_docx_adapter_masks_body_header_and_metadata(tmp_path: Path) -> None:
@@ -38,7 +41,7 @@ def test_xlsx_adapter_masks_cells_sheet_names_comments_and_metadata(tmp_path: Pa
     source = tmp_path / "sample.xlsx"
     workbook.save(source)
 
-    result = Anonymizer().process_file(source)
+    result = Anonymizer(_PATTERN_ONLY).process_file(source)
 
     output = openpyxl.load_workbook(result.output_path, data_only=False)
     worksheet = output.active

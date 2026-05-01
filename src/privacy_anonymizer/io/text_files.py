@@ -19,7 +19,8 @@ class TextFileAdapter(FileAdapter):
         keep_metadata: bool,
         replacements=None,
         original_text: str | None = None,
+        source_content=None,
     ) -> WriteResult:
-        del source, keep_metadata, replacements, original_text
+        del source, keep_metadata, replacements, original_text, source_content
         destination.write_text(anonymized_text, encoding="utf-8")
         return WriteResult(metadata_stripped=False)

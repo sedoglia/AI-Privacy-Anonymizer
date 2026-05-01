@@ -21,17 +21,33 @@ def create_app():
         return {"status": "ok"}
 
     @app.post("/anonymize/text")
-    def anonymize_text(text: str = Form(...), mode: str = Form("replace"), hybrid: bool = Form(False)):
-        anonymizer = Anonymizer(LayerConfig(masking_mode=mode, gliner_enabled=hybrid, pattern_enabled=True))
+    def anonymize_text(text: str = Form(...), mode: str = Form("replace"), hybrid: bool = Form(True)):
+        anonymizer = Anonymizer(LayerConfig(
+            masking_mode=mode,
+            opf_enabled=hybrid,
+            opf_recall_mode="aggressive",
+            gliner_enabled=hybrid,
+            gliner_threshold=0.3,
+            pattern_enabled=True,
+            parallel=hybrid,
+        ))
         result = anonymizer.analyze_text(text)
         return {"text": result.anonymized_text, "audit": result.audit_report}
 
     @app.post("/anonymize/file")
-    async def anonymize_file(file: UploadFile = File(...), mode: str = Form("replace"), hybrid: bool = Form(False)):
+    async def anonymize_file(file: UploadFile = File(...), mode: str = Form("replace"), hybrid: bool = Form(True)):
         tmp_path = Path(tempfile.mkdtemp(prefix="privacy-anonymizer-api-"))
         source = tmp_path / (file.filename or "upload.txt")
         source.write_bytes(await file.read())
-        anonymizer = Anonymizer(LayerConfig(masking_mode=mode, gliner_enabled=hybrid, pattern_enabled=True))
+        anonymizer = Anonymizer(LayerConfig(
+            masking_mode=mode,
+            opf_enabled=hybrid,
+            opf_recall_mode="aggressive",
+            gliner_enabled=hybrid,
+            gliner_threshold=0.3,
+            pattern_enabled=True,
+            parallel=hybrid,
+        ))
         result = anonymizer.process_file(source, output_dir=tmp_path / "out")
         return FileResponse(result.output_path, filename=result.output_path.name)
 

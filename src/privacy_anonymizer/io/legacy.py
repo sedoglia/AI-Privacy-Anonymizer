@@ -26,8 +26,9 @@ class RtfAdapter(FileAdapter):
         keep_metadata: bool,
         replacements=None,
         original_text: str | None = None,
+        source_content=None,
     ) -> WriteResult:
-        del source, keep_metadata, replacements, original_text
+        del source, keep_metadata, replacements, original_text, source_content
         escaped = anonymized_text.replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}")
         destination.write_text(r"{\rtf1\ansi " + escaped.replace("\n", r"\par ") + "}", encoding="utf-8")
         return WriteResult(warnings=["RTF ricostruito con formattazione semplificata."], metadata_stripped=True)
@@ -51,8 +52,9 @@ class LegacyDocAdapter(FileAdapter):
         keep_metadata: bool,
         replacements=None,
         original_text: str | None = None,
+        source_content=None,
     ) -> WriteResult:
-        del source, keep_metadata, replacements, original_text
+        del source, keep_metadata, replacements, original_text, source_content
         destination.write_text(anonymized_text, encoding="utf-8")
         return WriteResult(warnings=["Output DOC legacy prodotto come .txt anonimizzato."], metadata_stripped=True)
 
@@ -87,8 +89,9 @@ class LegacyXlsAdapter(FileAdapter):
         keep_metadata: bool,
         replacements=None,
         original_text: str | None = None,
+        source_content=None,
     ) -> WriteResult:
-        del source, keep_metadata, replacements, original_text
+        del source, keep_metadata, replacements, original_text, source_content
         destination.write_text(anonymized_text, encoding="utf-8")
         return WriteResult(warnings=["Output XLS legacy prodotto come .txt anonimizzato."], metadata_stripped=True)
 

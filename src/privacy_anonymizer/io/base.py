@@ -11,6 +11,7 @@ from privacy_anonymizer.masking import ReplacementSpan
 class FileContent:
     text: str
     warnings: list[str] = field(default_factory=list)
+    ocr_words: list[list[dict]] | None = None  # per-page word boxes cached from OCR pass
 
 
 @dataclass(slots=True)
@@ -38,5 +39,6 @@ class FileAdapter(ABC):
         keep_metadata: bool,
         replacements: list[ReplacementSpan] | None = None,
         original_text: str | None = None,
+        source_content: "FileContent | None" = None,
     ) -> WriteResult:
         raise NotImplementedError

@@ -31,9 +31,10 @@ class ImageAdapter(FileAdapter):
         keep_metadata: bool,
         replacements: list[ReplacementSpan] | None = None,
         original_text: str | None = None,
+        source_content=None,
     ) -> WriteResult:
         Image, ImageDraw, ImageFont = _import_pillow()
-        del keep_metadata, original_text
+        del keep_metadata, original_text, source_content
         if replacements:
             try:
                 redacted = _write_coordinate_redacted_image(source, destination, replacements)

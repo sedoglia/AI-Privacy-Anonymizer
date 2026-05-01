@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import re
 import time
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -152,6 +153,7 @@ class Anonymizer:
                 keep_metadata=self.config.keep_metadata,
                 replacements=plan.replacements,
                 original_text=content.text,
+                source_content=content,
             )
             write_warnings.extend(write_result.warnings)
             metadata_stripped = write_result.metadata_stripped
@@ -238,7 +240,11 @@ class Anonymizer:
                     self.opf_detector.release()
                 if self.config.low_memory and name == "gliner" and self.gliner_detector is not None:
                     self.gliner_detector.release()
-        return resolve_spans(spans)
+        resolved = resolve_spans(spans)
+        resolved = _filter_false_positive_personas(text, resolved)
+        return _expand_all_occurrences(text, resolved)
+
+
 
     def _audit_report(
         self,
@@ -284,3 +290,50 @@ class Anonymizer:
         if self.config.pattern_enabled:
             layers.append("pattern")
         return layers
+
+
+def _filter_false_positive_personas(text: str, spans: list[DetectionSpan]) -> list[DetectionSpan]:
+    """Remove PERSONA spans that are institutional/organizational codes, not person names.
+
+    Italian person names never contain Arabic digits. Codes like "ASL TO3", "203",
+    "SSD TORINO 3" do contain digits and are therefore not personal data.
+    """
+    result = []
+    for span in spans:
+        if span.label == "PERSONA" and re.search(r"\d", text[span.start : span.end]):
+            continue
+        result.append(span)
+    return result
+
+
+def _expand_all_occurrences(text: str, spans: list[DetectionSpan]) -> list[DetectionSpan]:
+    """For every detected multi-word entity, find ALL literal occurrences in the text.
+
+    NER models can miss repeated instances of the same entity (e.g. a person's name
+    appearing in the header and again in the body). This step ensures that once an
+    entity value is confirmed as PII, every verbatim occurrence is covered.
+    Only multi-word values are expanded to avoid over-redacting common single words.
+    """
+    covered: set[tuple[int, int]] = {(s.start, s.end) for s in spans}
+    entity_map: dict[str, tuple[str, str, float]] = {}
+    for span in spans:
+        value = text[span.start : span.end].strip()
+        if len(value.split()) >= 2:
+            norm = " ".join(value.upper().split())
+            if norm not in entity_map:
+                entity_map[norm] = (span.label, span.source, span.score)
+
+    if not entity_map:
+        return spans
+
+    extra: list[DetectionSpan] = []
+    for norm, (label, source, score) in entity_map.items():
+        for match in re.finditer(re.escape(norm), text, re.IGNORECASE):
+            key = (match.start(), match.end())
+            if key not in covered:
+                extra.append(DetectionSpan(match.start(), match.end(), label, source, score))
+                covered.add(key)
+
+    if not extra:
+        return spans
+    return resolve_spans(spans + extra)

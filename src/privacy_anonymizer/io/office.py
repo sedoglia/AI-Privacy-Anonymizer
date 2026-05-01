@@ -32,8 +32,9 @@ class DocxAdapter(FileAdapter):
         keep_metadata: bool,
         replacements=None,
         original_text: str | None = None,
+        source_content=None,
     ) -> WriteResult:
-        del replacements, original_text
+        del replacements, original_text, source_content
         Document = _import_docx()
         document = Document(source)
         _replace_docx_text(document, anonymized_text)
@@ -81,8 +82,9 @@ class XlsxAdapter(FileAdapter):
         keep_metadata: bool,
         replacements=None,
         original_text: str | None = None,
+        source_content=None,
     ) -> WriteResult:
-        del replacements, original_text
+        del replacements, original_text, source_content
         openpyxl = _import_openpyxl()
         workbook = openpyxl.load_workbook(source)
         replacements = _line_replacements(anonymized_text)
@@ -130,8 +132,9 @@ class PptxAdapter(FileAdapter):
         keep_metadata: bool,
         replacements=None,
         original_text: str | None = None,
+        source_content=None,
     ) -> WriteResult:
-        del replacements, original_text
+        del replacements, original_text, source_content
         Presentation = _import_pptx()
         presentation = Presentation(source)
         replacements = _line_replacements(anonymized_text)

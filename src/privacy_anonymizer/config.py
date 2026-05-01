@@ -14,15 +14,15 @@ class MaskingMode(StrEnum):
 @dataclass(slots=True)
 class LayerConfig:
     parser: str = "built-in"
-    opf_enabled: bool = False
-    opf_recall_mode: str = "balanced"
-    gliner_enabled: bool = False
+    opf_enabled: bool = True
+    opf_recall_mode: str = "aggressive"
+    gliner_enabled: bool = True
     gliner_model: str = "urchade/gliner_multi_pii-v1"
-    gliner_threshold: float = 0.5
+    gliner_threshold: float = 0.3
     pattern_enabled: bool = True
     masking_mode: MaskingMode | str = MaskingMode.REPLACE
     consistent_mapping: bool = True
     keep_metadata: bool = False
     recursive: bool = True
     low_memory: bool = False
-    parallel: bool = False
+    parallel: bool = True

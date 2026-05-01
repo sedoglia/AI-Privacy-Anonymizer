@@ -68,8 +68,9 @@ class XmlAdapter(FileAdapter):
         keep_metadata: bool,
         replacements=None,
         original_text: str | None = None,
+        source_content=None,
     ) -> WriteResult:
-        del keep_metadata, replacements, original_text
+        del keep_metadata, replacements, original_text, source_content
         tree = ET.parse(source)
         root = tree.getroot()
         replacements_by_line = iter(anonymized_text.splitlines())

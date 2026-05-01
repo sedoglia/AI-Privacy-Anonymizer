@@ -3,8 +3,11 @@ from pathlib import Path
 
 from privacy_anonymizer import Anonymizer
 from privacy_anonymizer.compliance import write_compliance_report
+from privacy_anonymizer.config import LayerConfig
 from privacy_anonymizer.evaluation import evaluate_dataset, write_synthetic_dataset
 from privacy_anonymizer.mcp_server import handle_request
+
+_PATTERN_ONLY = LayerConfig(opf_enabled=False, gliner_enabled=False, parallel=False)
 
 
 def test_xml_adapter_masks_text_and_attributes(tmp_path: Path) -> None:
@@ -43,7 +46,7 @@ def test_compliance_report_writes_pdf(tmp_path: Path) -> None:
 
 def test_synthetic_dataset_evaluation(tmp_path: Path) -> None:
     dataset = write_synthetic_dataset(tmp_path / "synthetic.jsonl")
-    result = evaluate_dataset(dataset)
+    result = evaluate_dataset(dataset, anonymizer=Anonymizer(_PATTERN_ONLY))
 
     assert result.documents >= 30
     assert result.recall >= 0.9

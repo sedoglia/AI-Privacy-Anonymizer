@@ -35,8 +35,9 @@ class EmlAdapter(FileAdapter):
         keep_metadata: bool,
         replacements=None,
         original_text: str | None = None,
+        source_content=None,
     ) -> WriteResult:
-        del source, keep_metadata, replacements, original_text
+        del source, keep_metadata, replacements, original_text, source_content
         message = EmailMessage()
         message["Subject"] = "Messaggio anonimizzato"
         message["From"] = "anonimo@example.local"
@@ -94,7 +95,8 @@ class MsgAdapter(FileAdapter):
         keep_metadata: bool,
         replacements=None,
         original_text: str | None = None,
+        source_content=None,
     ) -> WriteResult:
-        del source, keep_metadata, replacements, original_text
+        del source, keep_metadata, replacements, original_text, source_content
         destination.write_text(anonymized_text, encoding="utf-8")
         return WriteResult(warnings=["Output MSG prodotto come .txt anonimizzato."], metadata_stripped=True)

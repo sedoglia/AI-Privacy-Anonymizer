@@ -20,11 +20,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", help="Directory o file di output")
     parser.add_argument("--mode", choices=[mode.value for mode in MaskingMode], default=MaskingMode.REPLACE.value)
     parser.add_argument("--disable-layer", action="append", choices=["opf", "gliner", "pattern"], default=[])
-    parser.add_argument("--layers", choices=["pattern-only", "hybrid"], default="pattern-only")
+    parser.add_argument("--layers", choices=["pattern-only", "hybrid"], default="hybrid")
     parser.add_argument("--parser", choices=["built-in", "docling"], default="built-in")
-    parser.add_argument("--recall-mode", choices=["conservative", "balanced", "aggressive"], default="balanced")
+    parser.add_argument("--recall-mode", choices=["conservative", "balanced", "aggressive"], default="aggressive")
     parser.add_argument("--gliner-model", default="urchade/gliner_multi_pii-v1")
-    parser.add_argument("--gliner-threshold", type=float, default=0.5)
+    parser.add_argument("--gliner-threshold", type=float, default=0.3)
     parser.add_argument("--device", default="cpu", help="Device previsto per i layer ML futuri")
     parser.add_argument("--keep-metadata", action="store_true", help="Non rimuove i metadati quando il formato lo supporta")
     parser.add_argument("--recursive", action=argparse.BooleanOptionalAction, default=True)
@@ -43,7 +43,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--wipe-cache", action="store_true", help="Cancella la cache locale dei modelli/parser")
     parser.add_argument("--export-vault", help="Scrive su file JSON il vault entity -> placeholder (per modalita' hash)")
     parser.add_argument("--restore", help="Ricostruisce il testo originale da un vault JSON precedentemente esportato")
-    parser.add_argument("--parallel", action="store_true", help="Esegue i layer in parallelo su thread separati (incompatibile con --low-memory)")
+    parser.add_argument("--parallel", action=argparse.BooleanOptionalAction, default=True, help="Esegue i layer in parallelo su thread separati (default attivo; usa --no-parallel per sequenziale; incompatibile con --low-memory)")
     parser.add_argument(
         "--install-full",
         action="store_true",

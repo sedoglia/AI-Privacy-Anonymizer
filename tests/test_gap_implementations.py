@@ -17,7 +17,7 @@ def test_synthetic_dataset_has_at_least_30_cases() -> None:
 def test_synthetic_dataset_evaluation_recall_strong(tmp_path: Path) -> None:
     dataset = tmp_path / "synthetic.jsonl"
     write_synthetic_dataset(dataset)
-    metrics = evaluate_dataset(dataset)
+    metrics = evaluate_dataset(dataset, anonymizer=Anonymizer(LayerConfig(opf_enabled=False, gliner_enabled=False, parallel=False)))
     assert metrics.recall >= 0.9
     assert metrics.f1 >= 0.85
 

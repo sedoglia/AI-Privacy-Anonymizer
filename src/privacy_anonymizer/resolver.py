@@ -36,7 +36,16 @@ def resolve_spans(spans: list[DetectionSpan], max_gap: int = 3) -> list[Detectio
             current_end = span.end
 
     groups.append(current)
-    return [_merge_group(group) for group in groups]
+    merged = [_merge_group(group) for group in groups]
+
+    # Second pass: resolve any remaining overlaps between incompatible spans.
+    # Higher source priority wins; ties broken by span length (longer wins).
+    by_priority = sorted(merged, key=lambda s: (-_priority(s), -s.length, s.start))
+    accepted: list[DetectionSpan] = []
+    for candidate in by_priority:
+        if not any(candidate.start < kept.end and kept.start < candidate.end for kept in accepted):
+            accepted.append(candidate)
+    return sorted(accepted, key=lambda s: s.start)
 
 
 def category_counts(spans: list[DetectionSpan]) -> dict[str, int]:

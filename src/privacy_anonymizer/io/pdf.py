@@ -20,10 +20,10 @@ class PdfAdapter(FileAdapter):
         pages = [page.extract_text() or "" for page in reader.pages]
         warnings: list[str] = []
         if not any(page.strip() for page in pages):
-            ocr_text, ocr_warnings = _ocr_pdf_text(path)
+            ocr_text, ocr_words, ocr_warnings = _ocr_pdf_text(path)
             warnings.extend(ocr_warnings)
             if ocr_text.strip():
-                return FileContent(ocr_text, warnings=warnings)
+                return FileContent(ocr_text, warnings=warnings, ocr_words=ocr_words)
             warnings.append(
                 "PDF senza testo selezionabile e OCR non disponibile/efficace: "
                 "installa l'extra [documents] o [recommended] per abilitare RapidOCR."
@@ -38,6 +38,7 @@ class PdfAdapter(FileAdapter):
         keep_metadata: bool,
         replacements: list[ReplacementSpan] | None = None,
         original_text: str | None = None,
+        source_content=None,
     ) -> WriteResult:
         del original_text, anonymized_text
         is_scanned = _pdf_is_scanned(source)
@@ -60,9 +61,12 @@ class PdfAdapter(FileAdapter):
                 "PDF con testo selezionabile ma nessuna occorrenza redigibile trovata: copia con metadata gestiti.",
             )
 
+        cached_words = source_content.ocr_words if source_content is not None else None
         if replacements:
             try:
-                redacted_ocr = _write_ocr_redacted_pdf(source, destination, replacements, keep_metadata)
+                redacted_ocr = _write_ocr_redacted_pdf(
+                    source, destination, replacements, keep_metadata, cached_words=cached_words
+                )
             except MissingOptionalDependencyError:
                 redacted_ocr = 0
             if redacted_ocr:
@@ -153,16 +157,19 @@ def _import_pillow():
     return Image
 
 
-def _ocr_pdf_text(path: Path) -> tuple[str, list[str]]:
-    """Read text from a scanned PDF via RapidOCR (preferred) with Docling as last resort."""
+def _ocr_pdf_text(path: Path) -> tuple[str, list[list[dict]] | None, list[str]]:
+    """Read text from a scanned PDF via RapidOCR (preferred) with Docling as last resort.
+
+    Returns (text, per_page_word_boxes_or_None, warnings).
+    """
     warnings: list[str] = []
 
-    text = _try_rapidocr_pdf(path, warnings)
+    text, words = _try_rapidocr_pdf(path, warnings)
     if text and text.strip():
-        return text, warnings
+        return text, words, warnings
 
     text = _try_docling_extract(path, warnings)
-    return text, warnings
+    return text, None, warnings
 
 
 def _try_docling_extract(path: Path, warnings: list[str]) -> str:
@@ -191,42 +198,119 @@ def _try_docling_extract(path: Path, warnings: list[str]) -> str:
         return ""
 
 
-def _try_rapidocr_pdf(path: Path, warnings: list[str]) -> str:
+def _try_rapidocr_pdf(path: Path, warnings: list[str]) -> tuple[str, list[list[dict]] | None]:
     try:
         fitz = _import_fitz()
         Image = _import_pillow()
     except MissingOptionalDependencyError as exc:
         warnings.append(f"OCR PDF non disponibile: dipendenza mancante ({exc}).")
-        return ""
+        return "", None
 
     engine = _load_rapidocr(warnings)
     if engine is None:
-        return ""
+        return "", None
 
     import io as _io
     import numpy as np  # type: ignore[import-not-found]
 
     document = fitz.open(path)
     pages_text: list[str] = []
+    pages_words: list[list[dict]] = []
+    # Running char offset in the full OCR text (mirrors "\n\n".join(pages_text)).
+    # Each word dict stores char_start/char_end so redaction can use position-based
+    # matching instead of re-matching by text content (which fails on OCR variants).
+    global_char_offset = 0
     try:
-        for page in document:
+        for page_idx, page in enumerate(document):
             pix = page.get_pixmap(dpi=OCR_RENDER_DPI, alpha=False)
             image = Image.open(_io.BytesIO(pix.tobytes("png"))).convert("RGB")
             try:
                 rows = _normalize_rapidocr_result(engine(np.array(image)))
             except Exception as exc:  # pragma: no cover - defensive
                 warnings.append(f"RapidOCR pagina fallita: {exc}")
+                pages_words.append([])
+                pages_text.append("")
                 continue
             if not rows:
+                pages_words.append([])
+                pages_text.append("")
                 continue
-            page_lines = [text for _, text, _ in rows if text]
-            pages_text.append("\n".join(page_lines))
+
+            # Filter to non-empty lines — same predicate used when building page text.
+            valid_rows = [(box, txt, score) for box, txt, score in rows if txt]
+            if not valid_rows:
+                pages_words.append([])
+                pages_text.append("")
+                continue
+
+            # "\n\n" separator between pages (mirrors "\n\n".join(...))
+            if page_idx > 0:
+                global_char_offset += 2
+
+            line_offset = global_char_offset
+            page_line_texts: list[str] = []
+            page_words: list[dict] = []
+
+            for line_idx, (box, line_text, _score) in enumerate(valid_rows):
+                # "\n" separator between lines (mirrors "\n".join(...))
+                if line_idx > 0:
+                    line_offset += 1
+
+                xs = [p[0] for p in box]
+                ys = [p[1] for p in box]
+                line_left, line_right = min(xs), max(xs)
+                line_top, line_bottom = min(ys), max(ys)
+                line_width = line_right - line_left
+                line_height = line_bottom - line_top
+
+                tokens = line_text.split()
+                page_line_texts.append(line_text)
+                if not tokens:
+                    line_offset += len(line_text)
+                    continue
+
+                total_chars = sum(len(t) for t in tokens) + max(len(tokens) - 1, 0)
+                cursor_x = line_left
+                search_from = 0
+
+                for tok_idx, token in enumerate(tokens):
+                    token_width_chars = len(token) + (1 if tok_idx < len(tokens) - 1 else 0)
+                    token_px_width = line_width * (token_width_chars / total_chars) if total_chars else 0
+
+                    # Find exact position of this token in the original line text
+                    # (handles multiple spaces / unusual OCR whitespace).
+                    tok_pos = line_text.find(token, search_from)
+                    if tok_pos < 0:
+                        tok_pos = search_from
+
+                    page_words.append({
+                        "text": token,
+                        "left": cursor_x,
+                        "top": line_top,
+                        "width": token_px_width,
+                        "height": line_height,
+                        "char_start": line_offset + tok_pos,
+                        "char_end": line_offset + tok_pos + len(token),
+                    })
+                    cursor_x += token_px_width
+                    search_from = tok_pos + len(token)
+
+                line_offset += len(line_text)
+
+            page_text = "\n".join(page_line_texts)
+            global_char_offset = line_offset  # = global_char_offset_at_page_start + len(page_text)
+
+            pages_text.append(page_text)
+            pages_words.append(
+                [{"_pix_width": pix.width, "_pix_height": pix.height, **w} for w in page_words]
+                if page_words else []
+            )
     finally:
         document.close()
     text = "\n\n".join(pages_text)
     if text.strip():
         warnings.append("PDF scansionato letto con RapidOCR.")
-    return text
+    return text, pages_words if text.strip() else None
 
 
 def _load_rapidocr(warnings: list[str] | None = None):
@@ -281,52 +365,91 @@ def _write_ocr_redacted_pdf(
     destination: Path,
     replacements: list[ReplacementSpan],
     keep_metadata: bool,
+    cached_words: list[list[dict]] | None = None,
 ) -> int:
-    """Redact a scanned PDF by locating word boxes via RapidOCR on each rendered page."""
+    """Redact a scanned PDF by locating word boxes via RapidOCR on each rendered page.
+
+    If cached_words is provided (from read_text), reuses that OCR output instead of
+    re-running OCR, ensuring the text used for entity detection and the word coordinates
+    used for redaction come from the exact same OCR pass.
+    """
     fitz = _import_fitz()
-    Image = _import_pillow()
-
-    engine = _load_rapidocr()
-    if engine is None:
-        return 0
-
-    import io as _io
-    import numpy as np  # type: ignore[import-not-found]
 
     document = fitz.open(source)
     redaction_count = 0
     try:
-        for page in document:
-            pix = page.get_pixmap(dpi=OCR_RENDER_DPI, alpha=False)
-            image = Image.open(_io.BytesIO(pix.tobytes("png"))).convert("RGB")
-            try:
-                rows = _normalize_rapidocr_result(engine(np.array(image)))
-            except Exception:
-                continue
-            if not rows:
-                continue
+        for page_index, page in enumerate(document):
+            if cached_words is not None:
+                if page_index >= len(cached_words) or not cached_words[page_index]:
+                    continue
+                raw_words = cached_words[page_index]
+                pix_width = raw_words[0].get("_pix_width", 1) if raw_words else 1
+                pix_height = raw_words[0].get("_pix_height", 1) if raw_words else 1
+                words = [{k: v for k, v in w.items() if not k.startswith("_")} for w in raw_words]
+            else:
+                Image = _import_pillow()
+                engine = _load_rapidocr()
+                if engine is None:
+                    break
+                import io as _io
+                import numpy as np  # type: ignore[import-not-found]
+                pix = page.get_pixmap(dpi=OCR_RENDER_DPI, alpha=False)
+                image = Image.open(_io.BytesIO(pix.tobytes("png"))).convert("RGB")
+                try:
+                    rows = _normalize_rapidocr_result(engine(np.array(image)))
+                except Exception:
+                    continue
+                if not rows:
+                    continue
+                words = _rapidocr_words(rows)
+                pix_width, pix_height = pix.width, pix.height
 
-            words = _rapidocr_words(rows)
             if not words:
                 continue
 
-            scale_x = page.rect.width / pix.width if pix.width else 1.0
-            scale_y = page.rect.height / pix.height if pix.height else 1.0
+            scale_x = page.rect.width / pix_width if pix_width else 1.0
+            scale_y = page.rect.height / pix_height if pix_height else 1.0
 
             page_redactions = 0
+            seen_rects: set[tuple[float, float, float, float]] = set()
+
+            # Determine whether words carry char-offset information (set during OCR
+            # in _try_rapidocr_pdf). If so, use positional matching — it is immune to
+            # OCR character variants because it ties directly to the same text that NER
+            # ran on. Fall back to text-content matching when offsets are absent
+            # (e.g., redaction without a cached OCR pass).
+            has_char_offsets = words and "char_start" in words[0]
+
             for replacement in replacements:
-                original = replacement.original.strip()
-                if not original:
-                    continue
-                for match in _find_word_matches(words, original):
+                fill = (0, 0, 0) if set(replacement.replacement) == {"█"} else (1, 1, 1)
+                annot_text = "" if fill == (0, 0, 0) else replacement.replacement
+
+                if has_char_offsets:
+                    span_words = [
+                        w for w in words
+                        if w.get("char_start", -1) >= replacement.start
+                        and w.get("char_end", -1) <= replacement.end
+                    ]
+                    groups: list[list[dict]] = [span_words] if span_words else []
+                else:
+                    original = replacement.original.strip()
+                    if not original:
+                        continue
+                    groups = _find_word_matches(words, original)
+
+                for match in groups:
+                    if not match:
+                        continue
                     left = min(w["left"] for w in match) * scale_x
                     top = min(w["top"] for w in match) * scale_y
                     right = max(w["left"] + w["width"] for w in match) * scale_x
                     bottom = max(w["top"] + w["height"] for w in match) * scale_y
+                    rect_key = (round(left, 1), round(top, 1), round(right, 1), round(bottom, 1))
+                    if rect_key in seen_rects:
+                        continue
+                    seen_rects.add(rect_key)
                     rect = fitz.Rect(left, top, right, bottom)
-                    fill = (0, 0, 0) if set(replacement.replacement) == {"█"} else (1, 1, 1)
-                    text = "" if fill == (0, 0, 0) else replacement.replacement
-                    page.add_redact_annot(rect, text=text, fill=fill)
+                    page.add_redact_annot(rect, text=annot_text, fill=fill)
                     page_redactions += 1
             if page_redactions:
                 page.apply_redactions()
@@ -467,5 +590,12 @@ def _find_word_matches(words: list[dict], original: str) -> list[list[dict]]:
     return matches
 
 
+# Common OCR character confusables mapped to a canonical form.
+# Applied symmetrically to BOTH target tokens and OCR word tokens so that
+# a misread like "B0NOMO" matches the target "BONOMO", or "2O25" matches "2025".
+_OCR_CONFUSABLE_TABLE = str.maketrans("oOiIlLsS", "00111155")
+
+
 def _normalize_token(value: str) -> str:
-    return re.sub(r"\W+", "", value, flags=re.UNICODE).lower()
+    s = re.sub(r"\W+", "", value, flags=re.UNICODE).lower()
+    return s.translate(_OCR_CONFUSABLE_TABLE)

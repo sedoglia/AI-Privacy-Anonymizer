@@ -53,7 +53,15 @@ def create_app():
         raise RuntimeError("Gradio non installato: installa con `python -m pip install -e .[webui]`.") from exc
 
     def anonymize_text(text: str, mode: str, hybrid: bool):
-        anonymizer = Anonymizer(LayerConfig(masking_mode=mode, gliner_enabled=hybrid, pattern_enabled=True))
+        anonymizer = Anonymizer(LayerConfig(
+            masking_mode=mode,
+            opf_enabled=hybrid,
+            opf_recall_mode="aggressive",
+            gliner_enabled=hybrid,
+            gliner_threshold=0.3,
+            pattern_enabled=True,
+            parallel=hybrid,
+        ))
         result = anonymizer.analyze_text(text)
         highlighted = render_highlighted_html(text, result.spans)
         return result.anonymized_text, highlighted, result.audit_report
@@ -61,7 +69,15 @@ def create_app():
     def anonymize_file(file_obj, mode: str, hybrid: bool):
         if file_obj is None:
             return None, {"warnings": ["Nessun file caricato."]}
-        anonymizer = Anonymizer(LayerConfig(masking_mode=mode, gliner_enabled=hybrid, pattern_enabled=True))
+        anonymizer = Anonymizer(LayerConfig(
+            masking_mode=mode,
+            opf_enabled=hybrid,
+            opf_recall_mode="aggressive",
+            gliner_enabled=hybrid,
+            gliner_threshold=0.3,
+            pattern_enabled=True,
+            parallel=hybrid,
+        ))
         source = Path(file_obj.name)
         output_dir = tempfile.mkdtemp(prefix="privacy-anonymizer-")
         result = anonymizer.process_file(source, output_dir=output_dir)
@@ -72,7 +88,7 @@ def create_app():
         with gr.Tab("Testo"):
             text = gr.Textbox(lines=12, label="Input")
             mode = gr.Dropdown(["replace", "redact", "generalize", "hash"], value="replace", label="Modalità")
-            hybrid = gr.Checkbox(value=False, label="Abilita GLiNER")
+            hybrid = gr.Checkbox(value=True, label="Modalità Hybrid (OPF + GLiNER)")
             btn = gr.Button("Anonimizza")
             output = gr.Textbox(lines=12, label="Output anonimizzato")
             highlight = gr.HTML(label="Highlight per layer sorgente")
@@ -81,7 +97,7 @@ def create_app():
         with gr.Tab("File"):
             file_input = gr.File(label="File")
             file_mode = gr.Dropdown(["replace", "redact", "generalize", "hash"], value="replace", label="Modalità")
-            file_hybrid = gr.Checkbox(value=False, label="Abilita GLiNER")
+            file_hybrid = gr.Checkbox(value=True, label="Modalità Hybrid (OPF + GLiNER)")
             file_btn = gr.Button("Anonimizza file")
             file_output = gr.File(label="Output")
             file_audit = gr.JSON(label="Audit")

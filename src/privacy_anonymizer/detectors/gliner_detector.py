@@ -1,6 +1,23 @@
 from __future__ import annotations
 
+import logging
+import os
+import warnings
+
+# Set before any huggingface_hub import so the library reads it at init time.
+os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+
+# The truncation message is emitted via logging (not warnings.warn), so we must
+# raise the log threshold instead of using warnings.filterwarnings.
+logging.getLogger("transformers.tokenization_utils_base").setLevel(logging.ERROR)
+
 from privacy_anonymizer.models import DetectionSpan
+
+# Permanent filters: applied once at import time so they are visible to all threads.
+# catch_warnings() context managers are NOT thread-safe and must not be used in
+# methods called from ThreadPoolExecutor workers.
+warnings.filterwarnings("ignore", message=".*sentencepiece tokenizer.*byte fallback.*")
+warnings.filterwarnings("ignore", message=".*resume_download.*", category=FutureWarning)
 
 DEFAULT_LABELS = [
     "person",
@@ -45,6 +62,23 @@ LABEL_MAP = {
 }
 
 
+def _suppress_hf_progress() -> None:
+    """Disable huggingface_hub tqdm progress bars and noisy tokenizer log lines."""
+    import logging
+
+    # Belt-and-suspenders: also call the API in case the env var was set too late.
+    try:
+        import huggingface_hub.utils as _hf_utils
+        if hasattr(_hf_utils, "disable_progress_bars"):
+            _hf_utils.disable_progress_bars()
+    except Exception:
+        pass
+
+    # The "Asking to truncate to max_length" message is emitted via logging, not
+    # warnings.warn(), so warnings.filterwarnings() cannot catch it.
+    logging.getLogger("transformers.tokenization_utils_base").setLevel(logging.ERROR)
+
+
 class GlinerDetector:
     source = "gliner"
 
@@ -84,6 +118,7 @@ class GlinerDetector:
             from gliner import GLiNER
         except ImportError as exc:
             raise RuntimeError("Layer GLiNER non disponibile: installa con `python -m pip install -e .[ml]`.") from exc
+        _suppress_hf_progress()
         self._model = GLiNER.from_pretrained(self.model_name)
         return self._model
 
