@@ -3,12 +3,13 @@ from __future__ import annotations
 from pathlib import Path
 
 from privacy_anonymizer.io.base import FileAdapter
-from privacy_anonymizer.io.email_files import EmlAdapter
+from privacy_anonymizer.io.email_files import EmlAdapter, MsgAdapter
 from privacy_anonymizer.io.images import ImageAdapter
-from privacy_anonymizer.io.legacy import RtfAdapter
+from privacy_anonymizer.io.legacy import LegacyDocAdapter, LegacyXlsAdapter, RtfAdapter
 from privacy_anonymizer.io.office import DocxAdapter, PptxAdapter, XlsxAdapter
 from privacy_anonymizer.io.pdf import PdfAdapter
 from privacy_anonymizer.io.text_files import TextFileAdapter
+from privacy_anonymizer.io.xml_files import XmlAdapter
 
 ADAPTERS: tuple[FileAdapter, ...] = (
     TextFileAdapter(),
@@ -18,7 +19,11 @@ ADAPTERS: tuple[FileAdapter, ...] = (
     PdfAdapter(),
     ImageAdapter(),
     EmlAdapter(),
+    MsgAdapter(),
     RtfAdapter(),
+    LegacyDocAdapter(),
+    LegacyXlsAdapter(),
+    XmlAdapter(),
 )
 SUPPORTED_EXTENSIONS = frozenset(extension for adapter in ADAPTERS for extension in adapter.extensions)
 

@@ -94,7 +94,7 @@ class Anonymizer:
         content = self.docling_extractor.read_text(source) if self.docling_extractor else adapter.read_text(source)
         spans = self.detect_text(content.text)
         plan = build_masking_plan(content.text, spans, self.config.masking_mode)
-        destination = Path(output_path) if output_path else self._output_path(source, output_dir)
+        destination = Path(output_path) if output_path else self._output_path(source, output_dir, adapter.output_suffix(source))
         output_path_resolved = None if dry_run else destination
         write_warnings: list[str] = []
         metadata_stripped = not self.config.keep_metadata
@@ -198,10 +198,10 @@ class Anonymizer:
             "warnings": warnings or [],
         }
 
-    def _output_path(self, source: Path, output_dir: str | Path | None) -> Path:
+    def _output_path(self, source: Path, output_dir: str | Path | None, suffix: str | None = None) -> Path:
         directory = Path(output_dir) if output_dir else source.parent
         directory.mkdir(parents=True, exist_ok=True)
-        return directory / f"{source.stem}_anonymized{source.suffix}"
+        return directory / f"{source.stem}_anonymized{suffix or source.suffix}"
 
     def _layers_used(self) -> list[str]:
         layers = []

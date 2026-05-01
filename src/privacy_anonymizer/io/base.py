@@ -22,6 +22,9 @@ class WriteResult:
 class FileAdapter(ABC):
     extensions: set[str]
 
+    def output_suffix(self, source: Path) -> str:
+        return source.suffix
+
     @abstractmethod
     def read_text(self, path: Path) -> FileContent:
         raise NotImplementedError

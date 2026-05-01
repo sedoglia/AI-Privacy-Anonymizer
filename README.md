@@ -18,6 +18,8 @@ Stato implementazione:
 - Parser Docling opzionale selezionabile con `--parser docling`.
 - Strip metadati base Office, disattivabile con `--keep-metadata`.
 - Web UI Gradio opzionale e API REST FastAPI locale.
+- MCP stdio locale con `privacy-anonymizer-mcp`.
+- Dataset sintetico, evaluation e report compliance PDF.
 - Audit log JSON senza valori PII originali.
 
 ## Esempi
@@ -32,8 +34,12 @@ privacy-anonymizer report.pdf --mode redact
 privacy-anonymizer file.txt --layers hybrid --disable-layer opf
 privacy-anonymizer --supported-formats
 privacy-anonymizer --setup
+privacy-anonymizer --generate-synthetic-dataset ./synthetic.jsonl
+privacy-anonymizer --evaluate ./synthetic.jsonl
+privacy-anonymizer documento.txt --compliance-report report_gdpr.pdf
 privacy-anonymizer --webui
 privacy-anonymizer --api
+privacy-anonymizer-mcp
 privacy-anonymizer --text "Mario, CF RSSMRA80A01L219X, tel 3401234567"
 ```
 

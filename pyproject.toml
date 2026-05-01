@@ -30,6 +30,8 @@ documents = [
   "pillow>=10.0",
   "pytesseract>=0.3.10",
   "striprtf>=0.0.26",
+  "extract-msg>=0.48",
+  "xlrd>=2.0",
 ]
 docling = [
   "docling>=2.0",
@@ -53,6 +55,8 @@ all = [
   "pillow>=10.0",
   "pytesseract>=0.3.10",
   "striprtf>=0.0.26",
+  "extract-msg>=0.48",
+  "xlrd>=2.0",
   "docling>=2.0",
   "docling-core>=2.0",
   "gradio>=4.0",
@@ -66,6 +70,7 @@ all = [
 [project.scripts]
 privacy-anonymizer = "privacy_anonymizer.cli:main"
 privacy-anonymizer-web = "privacy_anonymizer.webui:launch"
+privacy-anonymizer-mcp = "privacy_anonymizer.mcp_server:main"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/privacy_anonymizer"]

@@ -58,4 +58,43 @@ def _message_body(message) -> str:
             if part.get_content_type() in {"text/plain", "text/html"}:
                 bodies.append(part.get_content())
         return "\n".join(str(body) for body in bodies)
-    return str(message.get_content())
+    return str(message.get_content() or "")
+
+
+class MsgAdapter(FileAdapter):
+    extensions = {".msg"}
+
+    def output_suffix(self, source: Path) -> str:
+        del source
+        return ".txt"
+
+    def read_text(self, path: Path) -> FileContent:
+        try:
+            import extract_msg
+        except ImportError as exc:
+            from privacy_anonymizer.errors import MissingOptionalDependencyError
+
+            raise MissingOptionalDependencyError("extract-msg", "documents") from exc
+        message = extract_msg.Message(str(path))
+        values = [
+            f"From: {message.sender or ''}",
+            f"To: {message.to or ''}",
+            f"Cc: {message.cc or ''}",
+            f"Subject: {message.subject or ''}",
+            "",
+            message.body or "",
+        ]
+        return FileContent("\n".join(values), warnings=["MSG allegati non processati ricorsivamente in questo adapter."])
+
+    def write_anonymized(
+        self,
+        source: Path,
+        destination: Path,
+        anonymized_text: str,
+        keep_metadata: bool,
+        replacements=None,
+        original_text: str | None = None,
+    ) -> WriteResult:
+        del source, keep_metadata, replacements, original_text
+        destination.write_text(anonymized_text, encoding="utf-8")
+        return WriteResult(warnings=["Output MSG prodotto come .txt anonimizzato."], metadata_stripped=True)

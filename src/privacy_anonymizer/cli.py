@@ -7,7 +7,9 @@ import sys
 from pathlib import Path
 
 from privacy_anonymizer.anonymizer import Anonymizer
+from privacy_anonymizer.compliance import write_compliance_report
 from privacy_anonymizer.config import LayerConfig, MaskingMode
+from privacy_anonymizer.evaluation import evaluate_dataset, write_synthetic_dataset
 from privacy_anonymizer.io import supported_extensions
 
 
@@ -27,11 +29,14 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--keep-metadata", action="store_true", help="Non rimuove i metadati quando il formato lo supporta")
     parser.add_argument("--recursive", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--dry-run", action="store_true", help="Mostra il report senza scrivere output")
+    parser.add_argument("--compliance-report", help="Scrive un report PDF GDPR per il file processato")
     parser.add_argument("--show-map", action="store_true", help="Mostra solo categorie e conteggi, mai valori originali")
     parser.add_argument("--json", action="store_true", help="Stampa audit JSON")
     parser.add_argument("--supported-formats", action="store_true", help="Mostra i formati supportati")
     parser.add_argument("--setup", action="store_true", help="Verifica setup locale disponibile")
     parser.add_argument("--download-models", action="store_true", help="Placeholder per download modelli ML futuri")
+    parser.add_argument("--generate-synthetic-dataset", help="Scrive un dataset JSONL sintetico per evaluation")
+    parser.add_argument("--evaluate", help="Valuta un dataset JSONL con campi text e labels")
     parser.add_argument("--webui", action="store_true", help="Avvia Web UI Gradio locale")
     parser.add_argument("--api", action="store_true", help="Avvia API REST locale FastAPI")
     return parser
@@ -49,6 +54,11 @@ def main(argv: list[str] | None = None) -> int:
         _print_setup_status(args.download_models)
         return 0
 
+    if args.generate_synthetic_dataset:
+        path = write_synthetic_dataset(args.generate_synthetic_dataset)
+        print(f"Dataset sintetico scritto: {path}")
+        return 0
+
     if args.webui:
         from privacy_anonymizer.webui import launch
 
@@ -60,6 +70,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
 
     if not args.input and args.text is None:
+        if args.evaluate:
+            metrics = evaluate_dataset(args.evaluate)
+            print(json.dumps(metrics.as_dict(), indent=2, ensure_ascii=False))
+            return 0
         parser.error("specifica un file oppure --text")
 
     pattern_enabled = "pattern" not in args.disable_layer
@@ -113,6 +127,8 @@ def main(argv: list[str] | None = None) -> int:
         output_dir = output if output and (output.suffix == "" or output.is_dir()) else None
         output_path = output if output and output_dir is None else None
         result = anonymizer.process_file(input_path, output_dir=output_dir, output_path=output_path, dry_run=args.dry_run)
+        if args.compliance_report:
+            write_compliance_report(result.audit_report, args.compliance_report)
 
         if args.json:
             print(json.dumps(result.audit_report, indent=2, ensure_ascii=False))
@@ -154,6 +170,8 @@ def _print_setup_status(download_models: bool = False) -> None:
     _print_dependency_status("PDF read", "pypdf", "documents")
     _print_dependency_status("PDF write", "reportlab", "documents")
     _print_dependency_status("Image/OCR bridge", "pytesseract", "documents")
+    _print_dependency_status("MSG", "extract_msg", "documents")
+    _print_dependency_status("XLS legacy", "xlrd", "documents")
     _print_dependency_status("Docling parser", "docling", "docling")
     _print_dependency_status("GLiNER", "gliner", "ml")
     _print_dependency_status("OPF", "opf", "external")
