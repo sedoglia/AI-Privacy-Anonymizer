@@ -15,6 +15,50 @@ from privacy_anonymizer.models import DetectionSpan
 from privacy_anonymizer.resolver import category_counts, resolve_spans
 
 
+class _RichProgressBar:
+    def __init__(self, total: int) -> None:
+        from rich.progress import BarColumn, Progress, TaskProgressColumn, TextColumn, TimeRemainingColumn
+
+        self._progress = Progress(
+            TextColumn("[bold]{task.description}"),
+            BarColumn(),
+            TaskProgressColumn(),
+            TextColumn("{task.fields[current]}"),
+            TimeRemainingColumn(),
+            transient=True,
+        )
+        self._task_id = self._progress.add_task("Anonimizzazione", total=total, current="")
+        self._progress.start()
+
+    def advance(self, current: str) -> None:
+        self._progress.update(self._task_id, advance=1, current=current)
+
+    def close(self) -> None:
+        self._progress.stop()
+
+
+class _PlainProgressBar:
+    def __init__(self, total: int) -> None:
+        self._total = total
+        self._index = 0
+
+    def advance(self, current: str) -> None:
+        self._index += 1
+        print(f"  [{self._index}/{self._total}] {current}", flush=True)
+
+    def close(self) -> None:
+        return None
+
+
+def _open_progress_bar(total: int):
+    if total <= 0:
+        return None
+    try:
+        return _RichProgressBar(total)
+    except ImportError:
+        return _PlainProgressBar(total)
+
+
 @dataclass(slots=True)
 class ProcessResult:
     text: str
@@ -136,6 +180,7 @@ class Anonymizer:
         output_dir: str | Path,
         dry_run: bool = False,
         recursive: bool | None = None,
+        progress: bool = False,
     ) -> BatchProcessResult:
         source_dir = Path(folder)
         destination_dir = Path(output_dir)
@@ -144,31 +189,55 @@ class Anonymizer:
 
         should_recurse = self.config.recursive if recursive is None else recursive
         iterator = source_dir.rglob("*") if should_recurse else source_dir.glob("*")
+        candidates = sorted(path for path in iterator if path.is_file())
         results: list[ProcessResult] = []
         skipped: list[tuple[Path, str]] = []
 
-        for source in sorted(path for path in iterator if path.is_file()):
-            if source.suffix.lower() not in SUPPORTED_EXTENSIONS:
-                skipped.append((source, "formato non supportato"))
-                continue
-            relative = source.relative_to(source_dir)
-            target_dir = destination_dir / relative.parent
-            try:
-                results.append(self.process_file(source, output_dir=target_dir, dry_run=dry_run))
-            except Exception as exc:
-                skipped.append((source, str(exc)))
+        progress_bar = _open_progress_bar(len(candidates)) if progress else None
+        try:
+            for source in candidates:
+                if source.suffix.lower() not in SUPPORTED_EXTENSIONS:
+                    skipped.append((source, "formato non supportato"))
+                    if progress_bar is not None:
+                        progress_bar.advance(source.name)
+                    continue
+                relative = source.relative_to(source_dir)
+                target_dir = destination_dir / relative.parent
+                try:
+                    results.append(self.process_file(source, output_dir=target_dir, dry_run=dry_run))
+                except Exception as exc:
+                    skipped.append((source, str(exc)))
+                if progress_bar is not None:
+                    progress_bar.advance(source.name)
+        finally:
+            if progress_bar is not None:
+                progress_bar.close()
 
         return BatchProcessResult(results=results, skipped=skipped)
 
     def detect_text(self, text: str, language: str = "it") -> list[DetectionSpan]:
         del language
-        spans: list[DetectionSpan] = []
+        tasks: list[tuple[str, callable]] = []
         if self.config.opf_enabled and self.opf_detector is not None:
-            spans.extend(self.opf_detector.detect(text))
+            tasks.append(("opf", lambda: self.opf_detector.detect(text)))
         if self.config.gliner_enabled and self.gliner_detector is not None:
-            spans.extend(self.gliner_detector.detect(text))
+            tasks.append(("gliner", lambda: self.gliner_detector.detect(text)))
         if self.config.pattern_enabled:
-            spans.extend(self.pattern_detector.detect(text))
+            tasks.append(("pattern", lambda: self.pattern_detector.detect(text)))
+
+        spans: list[DetectionSpan] = []
+        if self.config.parallel and len(tasks) > 1 and not self.config.low_memory:
+            from concurrent.futures import ThreadPoolExecutor
+            with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
+                for partial in executor.map(lambda task: task[1](), tasks):
+                    spans.extend(partial)
+        else:
+            for name, run in tasks:
+                spans.extend(run())
+                if self.config.low_memory and name == "opf" and self.opf_detector is not None:
+                    self.opf_detector.release()
+                if self.config.low_memory and name == "gliner" and self.gliner_detector is not None:
+                    self.gliner_detector.release()
         return resolve_spans(spans)
 
     def _audit_report(

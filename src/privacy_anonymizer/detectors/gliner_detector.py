@@ -74,6 +74,9 @@ class GlinerDetector:
         ]
         return sorted(spans, key=lambda span: (span.start, span.end))
 
+    def release(self) -> None:
+        self._model = None
+
     def _load_model(self):
         if self._model is not None:
             return self._model

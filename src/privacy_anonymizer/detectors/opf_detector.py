@@ -41,6 +41,9 @@ class OpfDetector:
         spans = [_prediction_to_span(item) for item in predictions]
         return sorted((span for span in spans if span is not None), key=lambda span: (span.start, span.end))
 
+    def release(self) -> None:
+        self._pipeline = None
+
     def _load_pipeline(self):
         if self._pipeline is not None:
             return self._pipeline

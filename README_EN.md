@@ -416,11 +416,24 @@ privacy-anonymizer documento.docx --keep-metadata
 ### Performance and memory
 
 ```bash
-# Low-memory mode (processes layers sequentially, frees RAM between each)
+# Low-memory mode: layers run sequentially, RAM freed between each
 privacy-anonymizer file.txt --layers hybrid --low-memory
+
+# Parallelization: layers run on separate threads (incompatible with --low-memory)
+privacy-anonymizer file.txt --layers hybrid --parallel
 
 # Force CPU (disables GPU even if available)
 privacy-anonymizer file.txt --device cpu
+```
+
+### De-anonymization from vault
+
+```bash
+# 1. Anonymize in hash mode + export vault
+privacy-anonymizer document.txt --mode hash --export-vault vault.json --output anon.txt
+
+# 2. Restore the original text from the vault
+privacy-anonymizer --restore vault.json anon.txt --output restored.txt
 ```
 
 ### Maintenance

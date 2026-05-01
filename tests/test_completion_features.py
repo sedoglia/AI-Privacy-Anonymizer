@@ -45,9 +45,9 @@ def test_synthetic_dataset_evaluation(tmp_path: Path) -> None:
     dataset = write_synthetic_dataset(tmp_path / "synthetic.jsonl")
     result = evaluate_dataset(dataset)
 
-    assert result.documents == 3
+    assert result.documents >= 30
     assert result.recall >= 0.9
-    assert result.f1 >= 0.8
+    assert result.f1 >= 0.85
 
 
 def test_mcp_anonymize_text_tool() -> None:

@@ -38,12 +38,19 @@ class DocxAdapter(FileAdapter):
         document = Document(source)
         _replace_docx_text(document, anonymized_text)
         metadata_stripped = False
+        warnings = ["DOCX MVP: la sostituzione preserva il file ma può semplificare il testo in documenti con layout complesso."]
         if not keep_metadata:
             _strip_docx_metadata(document)
+            try:
+                accepted = _accept_track_changes(document)
+                if accepted:
+                    warnings.append(f"DOCX track-changes: {accepted} revisioni accettate o rimosse.")
+            except ImportError:
+                warnings.append("lxml non disponibile: track-changes non accettate esplicitamente.")
             metadata_stripped = True
         document.save(destination)
         return WriteResult(
-            warnings=["DOCX MVP: la sostituzione preserva il file ma può semplificare il testo in documenti con layout complesso."],
+            warnings=warnings,
             metadata_stripped=metadata_stripped,
         )
 
@@ -180,6 +187,39 @@ def _strip_docx_metadata(document) -> None:
     core.subject = ""
     core.title = ""
     core.category = ""
+
+
+W_NS = "http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+
+
+def _accept_track_changes(document) -> int:
+    from lxml import etree
+
+    accepted = 0
+    body = document.element.body
+    for ins in body.findall(f".//{{{W_NS}}}ins"):
+        parent = ins.getparent()
+        if parent is None:
+            continue
+        index = parent.index(ins)
+        for child in list(ins):
+            parent.insert(index, child)
+            index += 1
+        parent.remove(ins)
+        accepted += 1
+    for tag in ("del", "moveFrom"):
+        for element in body.findall(f".//{{{W_NS}}}{tag}"):
+            parent = element.getparent()
+            if parent is not None:
+                parent.remove(element)
+                accepted += 1
+    for tag in ("rsid", "rsidR", "rsidRPr", "rsidP", "rsidRDefault", "rsidTr"):
+        for element in body.iter():
+            attribute = f"{{{W_NS}}}{tag}"
+            if attribute in element.attrib:
+                del element.attrib[attribute]
+    del etree
+    return accepted
 
 
 def _iter_pptx_shapes(presentation):

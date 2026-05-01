@@ -25,3 +25,4 @@ class LayerConfig:
     keep_metadata: bool = False
     recursive: bool = True
     low_memory: bool = False
+    parallel: bool = False

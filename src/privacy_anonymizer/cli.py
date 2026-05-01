@@ -42,6 +42,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--low-memory", action="store_true", help="Riduce l'uso di RAM elaborando i layer in sequenza")
     parser.add_argument("--wipe-cache", action="store_true", help="Cancella la cache locale dei modelli/parser")
     parser.add_argument("--export-vault", help="Scrive su file JSON il vault entity -> placeholder (per modalita' hash)")
+    parser.add_argument("--restore", help="Ricostruisce il testo originale da un vault JSON precedentemente esportato")
+    parser.add_argument("--parallel", action="store_true", help="Esegue i layer in parallelo su thread separati (incompatibile con --low-memory)")
     parser.add_argument(
         "--install-full",
         action="store_true",
@@ -65,6 +67,9 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.install_full:
         return _install_full()
+
+    if args.restore:
+        return _restore_from_vault(args.restore, args.input, args.output)
 
     if args.setup or args.download_models:
         _print_setup_status(args.download_models)
@@ -108,6 +113,7 @@ def main(argv: list[str] | None = None) -> int:
             keep_metadata=args.keep_metadata,
             recursive=args.recursive,
             low_memory=args.low_memory,
+            parallel=args.parallel and not args.low_memory,
         ),
         device=args.device,
     )
@@ -130,7 +136,13 @@ def main(argv: list[str] | None = None) -> int:
 
         if input_path.is_dir():
             output_dir = output or input_path.with_name(f"{input_path.name}_anonymized")
-            batch = anonymizer.process_folder(input_path, output_dir=output_dir, dry_run=args.dry_run, recursive=args.recursive)
+            batch = anonymizer.process_folder(
+                input_path,
+                output_dir=output_dir,
+                dry_run=args.dry_run,
+                recursive=args.recursive,
+                progress=not args.json,
+            )
             if args.json:
                 print(json.dumps(_batch_audit(batch), indent=2, ensure_ascii=False))
             else:
@@ -232,6 +244,24 @@ def _maybe_export_vault(destination: str | None, replacements) -> None:
         for replacement in replacements
     }
     Path(destination).write_text(json.dumps(vault, indent=2, ensure_ascii=False), encoding="utf-8")
+
+
+def _restore_from_vault(vault_path: str, input_path: str | None, output_path: str | None) -> int:
+    if not input_path:
+        print("Errore: --restore richiede un file di testo anonimizzato come argomento posizionale.", file=sys.stderr)
+        return 1
+    vault = json.loads(Path(vault_path).read_text(encoding="utf-8"))
+    text = Path(input_path).read_text(encoding="utf-8")
+    for placeholder, entry in sorted(vault.items(), key=lambda item: -len(item[0])):
+        original = entry.get("original")
+        if isinstance(original, str):
+            text = text.replace(placeholder, original)
+    destination = Path(output_path) if output_path else Path(input_path).with_name(
+        Path(input_path).stem + "_restored" + Path(input_path).suffix
+    )
+    destination.write_text(text, encoding="utf-8")
+    print(f"Testo ripristinato: {destination}")
+    return 0
 
 
 def _install_full() -> int:
