@@ -15,6 +15,21 @@ dependencies = []
 [project.optional-dependencies]
 dev = ["pytest>=8.0"]
 rich = ["rich>=13.0"]
+office = [
+  "python-docx>=1.1",
+  "openpyxl>=3.1",
+  "python-pptx>=0.6",
+]
+ml = [
+  "gliner>=0.2.5",
+]
+all = [
+  "python-docx>=1.1",
+  "openpyxl>=3.1",
+  "python-pptx>=0.6",
+  "rich>=13.0",
+  "gliner>=0.2.5",
+]
 
 [project.scripts]
 privacy-anonymizer = "privacy_anonymizer.cli:main"

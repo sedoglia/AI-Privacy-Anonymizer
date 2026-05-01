@@ -15,8 +15,10 @@ class MaskingMode(StrEnum):
 class LayerConfig:
     opf_enabled: bool = False
     gliner_enabled: bool = False
+    gliner_model: str = "urchade/gliner_multi_pii-v1"
+    gliner_threshold: float = 0.5
     pattern_enabled: bool = True
     masking_mode: MaskingMode | str = MaskingMode.REPLACE
     consistent_mapping: bool = True
     keep_metadata: bool = False
-
+    recursive: bool = True
