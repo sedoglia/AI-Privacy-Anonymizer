@@ -23,16 +23,47 @@ office = [
 ml = [
   "gliner>=0.2.5",
 ]
+documents = [
+  "pypdf>=4.0",
+  "reportlab>=4.0",
+  "pillow>=10.0",
+  "pytesseract>=0.3.10",
+  "striprtf>=0.0.26",
+]
+docling = [
+  "docling>=2.0",
+  "docling-core>=2.0",
+]
+webui = [
+  "gradio>=4.0",
+]
+api = [
+  "fastapi>=0.110",
+  "uvicorn>=0.27",
+  "python-multipart>=0.0.9",
+]
 all = [
   "python-docx>=1.1",
   "openpyxl>=3.1",
   "python-pptx>=0.6",
+  "pypdf>=4.0",
+  "reportlab>=4.0",
+  "pillow>=10.0",
+  "pytesseract>=0.3.10",
+  "striprtf>=0.0.26",
+  "docling>=2.0",
+  "docling-core>=2.0",
+  "gradio>=4.0",
+  "fastapi>=0.110",
+  "uvicorn>=0.27",
+  "python-multipart>=0.0.9",
   "rich>=13.0",
   "gliner>=0.2.5",
 ]
 
 [project.scripts]
 privacy-anonymizer = "privacy_anonymizer.cli:main"
+privacy-anonymizer-web = "privacy_anonymizer.webui:launch"
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/privacy_anonymizer"]

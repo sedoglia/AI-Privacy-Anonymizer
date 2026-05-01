@@ -7,8 +7,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from privacy_anonymizer.config import LayerConfig, MaskingMode
-from privacy_anonymizer.detectors import GlinerDetector, ItalianPatternDetector
+from privacy_anonymizer.detectors import GlinerDetector, ItalianPatternDetector, OpfDetector
 from privacy_anonymizer.io import SUPPORTED_EXTENSIONS, get_adapter
+from privacy_anonymizer.io.docling_parser import DoclingTextExtractor
 from privacy_anonymizer.masking import mask_text
 from privacy_anonymizer.models import DetectionSpan
 from privacy_anonymizer.resolver import category_counts, resolve_spans
@@ -48,11 +49,13 @@ class Anonymizer:
         self.config = config or LayerConfig()
         self.device = device
         self.pattern_detector = ItalianPatternDetector()
+        self.docling_extractor = DoclingTextExtractor() if self.config.parser == "docling" else None
         self.gliner_detector = (
             GlinerDetector(self.config.gliner_model, self.config.gliner_threshold)
             if self.config.gliner_enabled
             else None
         )
+        self.opf_detector = OpfDetector(self.config.opf_recall_mode) if self.config.opf_enabled else None
 
     def process_text(self, text: str, language: str = "it") -> tuple[str, dict[str, int]]:
         spans = self.detect_text(text, language=language)
@@ -81,7 +84,7 @@ class Anonymizer:
         adapter = get_adapter(source)
 
         started = time.perf_counter()
-        content = adapter.read_text(source)
+        content = self.docling_extractor.read_text(source) if self.docling_extractor else adapter.read_text(source)
         spans = self.detect_text(content.text)
         anonymized = mask_text(content.text, spans, self.config.masking_mode)
         destination = Path(output_path) if output_path else self._output_path(source, output_dir)
@@ -151,6 +154,8 @@ class Anonymizer:
     def detect_text(self, text: str, language: str = "it") -> list[DetectionSpan]:
         del language
         spans: list[DetectionSpan] = []
+        if self.config.opf_enabled and self.opf_detector is not None:
+            spans.extend(self.opf_detector.detect(text))
         if self.config.gliner_enabled and self.gliner_detector is not None:
             spans.extend(self.gliner_detector.detect(text))
         if self.config.pattern_enabled:
@@ -174,6 +179,7 @@ class Anonymizer:
             "processing_time_seconds": round(elapsed, 4),
             "layers_used": self._layers_used(),
             "entities_found": {
+                "opf_spans": sum(1 for span in spans if span.source == "opf"),
                 "gliner_spans": sum(1 for span in spans if span.source == "gliner"),
                 "pattern_spans": sum(1 for span in spans if span.source == "pattern"),
                 "merged_unique_spans": len(spans),
@@ -190,6 +196,8 @@ class Anonymizer:
 
     def _layers_used(self) -> list[str]:
         layers = []
+        if self.config.opf_enabled:
+            layers.append("opf")
         if self.config.gliner_enabled:
             layers.append("gliner")
         if self.config.pattern_enabled:

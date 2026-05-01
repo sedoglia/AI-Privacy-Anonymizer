@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import importlib.util
 import json
 import sys
 from pathlib import Path
@@ -18,6 +19,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mode", choices=[mode.value for mode in MaskingMode], default=MaskingMode.REPLACE.value)
     parser.add_argument("--disable-layer", action="append", choices=["opf", "gliner", "pattern"], default=[])
     parser.add_argument("--layers", choices=["pattern-only", "hybrid"], default="pattern-only")
+    parser.add_argument("--parser", choices=["built-in", "docling"], default="built-in")
+    parser.add_argument("--recall-mode", choices=["conservative", "balanced", "aggressive"], default="balanced")
     parser.add_argument("--gliner-model", default="urchade/gliner_multi_pii-v1")
     parser.add_argument("--gliner-threshold", type=float, default=0.5)
     parser.add_argument("--device", default="cpu", help="Device previsto per i layer ML futuri")
@@ -29,6 +32,8 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--supported-formats", action="store_true", help="Mostra i formati supportati")
     parser.add_argument("--setup", action="store_true", help="Verifica setup locale disponibile")
     parser.add_argument("--download-models", action="store_true", help="Placeholder per download modelli ML futuri")
+    parser.add_argument("--webui", action="store_true", help="Avvia Web UI Gradio locale")
+    parser.add_argument("--api", action="store_true", help="Avvia API REST locale FastAPI")
     return parser
 
 
@@ -44,14 +49,28 @@ def main(argv: list[str] | None = None) -> int:
         _print_setup_status(args.download_models)
         return 0
 
+    if args.webui:
+        from privacy_anonymizer.webui import launch
+
+        launch()
+        return 0
+
+    if args.api:
+        _launch_api()
+        return 0
+
     if not args.input and args.text is None:
         parser.error("specifica un file oppure --text")
 
     pattern_enabled = "pattern" not in args.disable_layer
     gliner_enabled = args.layers == "hybrid" and "gliner" not in args.disable_layer
+    opf_enabled = args.layers == "hybrid" and "opf" not in args.disable_layer
     anonymizer = Anonymizer(
         LayerConfig(
+            parser=args.parser,
             masking_mode=args.mode,
+            opf_enabled=opf_enabled,
+            opf_recall_mode=args.recall_mode,
             gliner_enabled=gliner_enabled,
             gliner_model=args.gliner_model,
             gliner_threshold=args.gliner_threshold,
@@ -128,11 +147,32 @@ def _batch_audit(batch) -> dict:
 def _print_setup_status(download_models: bool = False) -> None:
     print("Setup base disponibile.")
     print("Layer pattern italiano: pronto.")
-    print("Layer Office opzionale: pronto se installato con extra [office].")
-    print("Layer GLiNER opzionale: integrato, richiede extra [ml] e download modello al primo uso.")
-    print("Layer OPF: non ancora implementato.")
+    _print_dependency_status("Office DOCX", "docx", "office")
+    _print_dependency_status("Office XLSX", "openpyxl", "office")
+    _print_dependency_status("Office PPTX", "pptx", "office")
+    _print_dependency_status("PDF read", "pypdf", "documents")
+    _print_dependency_status("PDF write", "reportlab", "documents")
+    _print_dependency_status("Image/OCR bridge", "pytesseract", "documents")
+    _print_dependency_status("Docling parser", "docling", "docling")
+    _print_dependency_status("GLiNER", "gliner", "ml")
+    _print_dependency_status("OPF", "opf", "external")
+    _print_dependency_status("Gradio Web UI", "gradio", "webui")
+    _print_dependency_status("FastAPI", "fastapi", "api")
     if download_models:
-        print("Il download GLiNER avviene automaticamente al primo uso di --layers hybrid.")
+        print("Il download GLiNER/OPF avviene automaticamente al primo uso dei rispettivi layer.")
+
+
+def _print_dependency_status(label: str, module: str, extra: str) -> None:
+    status = "ok" if importlib.util.find_spec(module) else f"mancante ({extra})"
+    print(f"{label}: {status}")
+
+
+def _launch_api() -> None:
+    try:
+        import uvicorn
+    except ImportError as exc:
+        raise RuntimeError("Uvicorn non installato: installa con `python -m pip install -e .[api]`.") from exc
+    uvicorn.run("privacy_anonymizer.api:app", host="127.0.0.1", port=8000, reload=False)
 
 
 if __name__ == "__main__":

@@ -2,12 +2,8 @@ from __future__ import annotations
 
 from pathlib import Path
 
+from privacy_anonymizer.errors import MissingOptionalDependencyError
 from privacy_anonymizer.io.base import FileAdapter, FileContent, WriteResult
-
-
-class MissingOptionalDependencyError(RuntimeError):
-    def __init__(self, package: str, extra: str = "office") -> None:
-        super().__init__(f"Dipendenza opzionale mancante: installa con `python -m pip install -e .[{extra}]` ({package}).")
 
 
 class DocxAdapter(FileAdapter):
@@ -190,7 +186,7 @@ def _import_docx():
     try:
         from docx import Document
     except ImportError as exc:
-        raise MissingOptionalDependencyError("python-docx") from exc
+        raise MissingOptionalDependencyError("python-docx", "office") from exc
     return Document
 
 
@@ -198,7 +194,7 @@ def _import_openpyxl():
     try:
         import openpyxl
     except ImportError as exc:
-        raise MissingOptionalDependencyError("openpyxl") from exc
+        raise MissingOptionalDependencyError("openpyxl", "office") from exc
     return openpyxl
 
 
@@ -206,5 +202,5 @@ def _import_pptx():
     try:
         from pptx import Presentation
     except ImportError as exc:
-        raise MissingOptionalDependencyError("python-pptx") from exc
+        raise MissingOptionalDependencyError("python-pptx", "office") from exc
     return Presentation
