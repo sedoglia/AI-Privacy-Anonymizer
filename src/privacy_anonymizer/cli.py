@@ -239,7 +239,7 @@ def _install_full() -> int:
 
     print("Installazione completa: tutti gli extra + OPF.")
     print("Questo richiederà alcuni GB di download (OPF ~3GB, GLiNER ~300MB, Docling ~500MB).")
-    extras_cmd = [sys.executable, "-m", "pip", "install", "ai-privacy-anonymizer[all]"]
+    extras_cmd = [sys.executable, "-m", "pip", "install", "ai-privacy-anonymizer[recommended]"]
     opf_cmd = [sys.executable, "-m", "pip", "install", "git+https://github.com/openai/privacy-filter"]
     print(f"  → {' '.join(extras_cmd)}")
     extras_result = subprocess.run(extras_cmd, check=False)
