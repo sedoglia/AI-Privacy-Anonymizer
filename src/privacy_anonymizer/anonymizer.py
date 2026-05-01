@@ -10,7 +10,7 @@ from privacy_anonymizer.config import LayerConfig, MaskingMode
 from privacy_anonymizer.detectors import GlinerDetector, ItalianPatternDetector, OpfDetector
 from privacy_anonymizer.io import SUPPORTED_EXTENSIONS, get_adapter
 from privacy_anonymizer.io.docling_parser import DoclingTextExtractor
-from privacy_anonymizer.masking import mask_text
+from privacy_anonymizer.masking import ReplacementSpan, build_masking_plan, mask_text
 from privacy_anonymizer.models import DetectionSpan
 from privacy_anonymizer.resolver import category_counts, resolve_spans
 
@@ -22,6 +22,7 @@ class ProcessResult:
     spans: list[DetectionSpan]
     audit_report: dict
     output_path: Path | None = None
+    replacements: list[ReplacementSpan] | None = None
 
     def save(self, path: str | Path) -> Path:
         destination = Path(path)
@@ -64,14 +65,20 @@ class Anonymizer:
     def analyze_text(self, text: str, language: str = "it") -> ProcessResult:
         started = time.perf_counter()
         spans = self.detect_text(text, language=language)
-        anonymized = mask_text(text, spans, self.config.masking_mode)
+        plan = build_masking_plan(text, spans, self.config.masking_mode)
         audit = self._audit_report(
             source_file=None,
             output_file=None,
             spans=spans,
             elapsed=time.perf_counter() - started,
         )
-        return ProcessResult(text=text, anonymized_text=anonymized, spans=spans, audit_report=audit)
+        return ProcessResult(
+            text=text,
+            anonymized_text=plan.text,
+            spans=spans,
+            audit_report=audit,
+            replacements=plan.replacements,
+        )
 
     def process_file(
         self,
@@ -86,7 +93,7 @@ class Anonymizer:
         started = time.perf_counter()
         content = self.docling_extractor.read_text(source) if self.docling_extractor else adapter.read_text(source)
         spans = self.detect_text(content.text)
-        anonymized = mask_text(content.text, spans, self.config.masking_mode)
+        plan = build_masking_plan(content.text, spans, self.config.masking_mode)
         destination = Path(output_path) if output_path else self._output_path(source, output_dir)
         output_path_resolved = None if dry_run else destination
         write_warnings: list[str] = []
@@ -97,8 +104,10 @@ class Anonymizer:
             write_result = adapter.write_anonymized(
                 source,
                 output_path_resolved,
-                anonymized,
+                plan.text,
                 keep_metadata=self.config.keep_metadata,
+                replacements=plan.replacements,
+                original_text=content.text,
             )
             write_warnings.extend(write_result.warnings)
             metadata_stripped = write_result.metadata_stripped
@@ -111,7 +120,7 @@ class Anonymizer:
             warnings=[*content.warnings, *write_warnings],
             metadata_stripped=metadata_stripped,
         )
-        result = ProcessResult(content.text, anonymized, spans, audit, output_path_resolved)
+        result = ProcessResult(content.text, plan.text, spans, audit, output_path_resolved, plan.replacements)
 
         if output_path_resolved is not None:
             output_path_resolved.with_suffix(output_path_resolved.suffix + ".audit.json").write_text(

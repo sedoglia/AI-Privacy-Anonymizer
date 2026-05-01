@@ -14,6 +14,7 @@ Stato implementazione:
 - Supporto testo puro (`.txt`, `.md`, `.log`, `.csv`) senza dipendenze extra.
 - Supporto Office opzionale (`.docx`, `.xlsx`, `.pptx`) con extra `office`.
 - Supporto documenti opzionale (`.pdf`, immagini, `.eml`, `.rtf`) con extra `documents`.
+- Redaction a coordinate per PDF selezionabili tramite PyMuPDF e immagini tramite bounding box OCR.
 - Parser Docling opzionale selezionabile con `--parser docling`.
 - Strip metadati base Office, disattivabile con `--keep-metadata`.
 - Web UI Gradio opzionale e API REST FastAPI locale.
@@ -55,7 +56,8 @@ Alcune feature dipendono da componenti esterni pesanti:
 - GLiNER scarica il modello al primo uso.
 - OPF richiede l'installazione del pacchetto OpenAI Privacy Filter.
 - OCR immagini richiede Tesseract installato nel sistema.
-- PDF e immagini sono supportati con ricostruzione semplificata del contenuto anonimizzato; la redaction a coordinate esatte resta il punto più delicato del PRD.
+- PDF selezionabili vengono redatti a coordinate quando PyMuPDF trova il testo originale; in caso contrario il sistema usa un fallback testuale.
+- Immagini vengono redatte a coordinate quando l'OCR restituisce bounding box allineabili alle entità; in caso contrario viene generata una versione testuale semplificata.
 
 ## Sviluppo
 

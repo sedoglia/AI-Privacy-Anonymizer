@@ -150,6 +150,7 @@ def _print_setup_status(download_models: bool = False) -> None:
     _print_dependency_status("Office DOCX", "docx", "office")
     _print_dependency_status("Office XLSX", "openpyxl", "office")
     _print_dependency_status("Office PPTX", "pptx", "office")
+    _print_dependency_status("PDF coordinate redaction", "fitz", "documents")
     _print_dependency_status("PDF read", "pypdf", "documents")
     _print_dependency_status("PDF write", "reportlab", "documents")
     _print_dependency_status("Image/OCR bridge", "pytesseract", "documents")

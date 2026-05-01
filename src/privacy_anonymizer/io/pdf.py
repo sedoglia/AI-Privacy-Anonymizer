@@ -4,6 +4,7 @@ from pathlib import Path
 
 from privacy_anonymizer.errors import MissingOptionalDependencyError
 from privacy_anonymizer.io.base import FileAdapter, FileContent, WriteResult
+from privacy_anonymizer.masking import ReplacementSpan
 
 
 class PdfAdapter(FileAdapter):
@@ -18,8 +19,27 @@ class PdfAdapter(FileAdapter):
             warnings.append("PDF senza testo selezionabile: usa OCR immagini/PDF scansionati in un passaggio dedicato.")
         return FileContent("\n\n".join(pages), warnings=warnings)
 
-    def write_anonymized(self, source: Path, destination: Path, anonymized_text: str, keep_metadata: bool) -> WriteResult:
-        del source
+    def write_anonymized(
+        self,
+        source: Path,
+        destination: Path,
+        anonymized_text: str,
+        keep_metadata: bool,
+        replacements: list[ReplacementSpan] | None = None,
+        original_text: str | None = None,
+    ) -> WriteResult:
+        del original_text
+        if replacements:
+            try:
+                redacted = _write_coordinate_redacted_pdf(source, destination, replacements, keep_metadata)
+            except MissingOptionalDependencyError:
+                redacted = 0
+            if redacted:
+                return WriteResult(
+                    warnings=[f"PDF redatto a coordinate con PyMuPDF: {redacted} occorrenze coperte."],
+                    metadata_stripped=not keep_metadata,
+                )
+
         canvas, pagesizes = _import_reportlab()
         c = canvas.Canvas(str(destination), pagesize=pagesizes.A4)
         width, height = pagesizes.A4
@@ -68,3 +88,38 @@ def _import_reportlab():
         raise MissingOptionalDependencyError("reportlab", "documents") from exc
     return canvas, pagesizes
 
+
+def _write_coordinate_redacted_pdf(
+    source: Path,
+    destination: Path,
+    replacements: list[ReplacementSpan],
+    keep_metadata: bool,
+) -> int:
+    fitz = _import_fitz()
+    document = fitz.open(source)
+    redaction_count = 0
+    for page in document:
+        for replacement in replacements:
+            original = replacement.original.strip()
+            if not original:
+                continue
+            for rect in page.search_for(original):
+                fill = (0, 0, 0) if set(replacement.replacement) == {"█"} else (1, 1, 1)
+                text = "" if fill == (0, 0, 0) else replacement.replacement
+                page.add_redact_annot(rect, text=text, fill=fill)
+                redaction_count += 1
+        if redaction_count:
+            page.apply_redactions()
+    if not keep_metadata:
+        document.set_metadata({})
+    document.save(destination, garbage=4, deflate=True)
+    document.close()
+    return redaction_count
+
+
+def _import_fitz():
+    try:
+        import fitz
+    except ImportError as exc:
+        raise MissingOptionalDependencyError("pymupdf", "documents") from exc
+    return fitz

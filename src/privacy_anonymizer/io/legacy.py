@@ -17,8 +17,16 @@ class RtfAdapter(FileAdapter):
             return FileContent(_fallback_rtf_to_text(raw), warnings=["striprtf non installato: usato parser RTF minimale."])
         return FileContent(rtf_to_text(raw))
 
-    def write_anonymized(self, source: Path, destination: Path, anonymized_text: str, keep_metadata: bool) -> WriteResult:
-        del source, keep_metadata
+    def write_anonymized(
+        self,
+        source: Path,
+        destination: Path,
+        anonymized_text: str,
+        keep_metadata: bool,
+        replacements=None,
+        original_text: str | None = None,
+    ) -> WriteResult:
+        del source, keep_metadata, replacements, original_text
         escaped = anonymized_text.replace("\\", "\\\\").replace("{", "\\{").replace("}", "\\}")
         destination.write_text(r"{\rtf1\ansi " + escaped.replace("\n", r"\par ") + "}", encoding="utf-8")
         return WriteResult(warnings=["RTF ricostruito con formattazione semplificata."], metadata_stripped=True)
@@ -29,4 +37,3 @@ def _fallback_rtf_to_text(raw: str) -> str:
     text = re.sub(r"\\[a-zA-Z]+\d* ?", "", text)
     text = text.replace("{", "").replace("}", "")
     return re.sub(r"\s+", " ", text).strip()
-

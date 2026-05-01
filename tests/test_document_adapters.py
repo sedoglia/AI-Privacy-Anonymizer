@@ -35,6 +35,7 @@ def test_rtf_adapter_masks_text(tmp_path: Path) -> None:
 def test_pdf_adapter_masks_text_when_dependencies_available(tmp_path: Path) -> None:
     pytest.importorskip("pypdf")
     pytest.importorskip("reportlab")
+    fitz = pytest.importorskip("fitz")
     from reportlab.pdfgen import canvas
 
     source = tmp_path / "sample.pdf"
@@ -45,4 +46,6 @@ def test_pdf_adapter_masks_text_when_dependencies_available(tmp_path: Path) -> N
     result = Anonymizer().process_file(source)
 
     assert result.output_path.suffix == ".pdf"
-    assert result.audit_report["warnings"]
+    text = "\n".join(page.get_text() for page in fitz.open(result.output_path))
+    assert "mario.rossi@example.com" not in text
+    assert "PDF redatto a coordinate" in result.audit_report["warnings"][0]

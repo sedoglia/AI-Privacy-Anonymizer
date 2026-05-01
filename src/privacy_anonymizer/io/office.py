@@ -24,7 +24,16 @@ class DocxAdapter(FileAdapter):
                         parts.append(cell.text)
         return FileContent("\n".join(parts))
 
-    def write_anonymized(self, source: Path, destination: Path, anonymized_text: str, keep_metadata: bool) -> WriteResult:
+    def write_anonymized(
+        self,
+        source: Path,
+        destination: Path,
+        anonymized_text: str,
+        keep_metadata: bool,
+        replacements=None,
+        original_text: str | None = None,
+    ) -> WriteResult:
+        del replacements, original_text
         Document = _import_docx()
         document = Document(source)
         _replace_docx_text(document, anonymized_text)
@@ -57,7 +66,16 @@ class XlsxAdapter(FileAdapter):
                         values.append(cell.comment.text)
         return FileContent("\n".join(values))
 
-    def write_anonymized(self, source: Path, destination: Path, anonymized_text: str, keep_metadata: bool) -> WriteResult:
+    def write_anonymized(
+        self,
+        source: Path,
+        destination: Path,
+        anonymized_text: str,
+        keep_metadata: bool,
+        replacements=None,
+        original_text: str | None = None,
+    ) -> WriteResult:
+        del replacements, original_text
         openpyxl = _import_openpyxl()
         workbook = openpyxl.load_workbook(source)
         replacements = _line_replacements(anonymized_text)
@@ -97,7 +115,16 @@ class PptxAdapter(FileAdapter):
                 values.append(shape.text)
         return FileContent("\n".join(values))
 
-    def write_anonymized(self, source: Path, destination: Path, anonymized_text: str, keep_metadata: bool) -> WriteResult:
+    def write_anonymized(
+        self,
+        source: Path,
+        destination: Path,
+        anonymized_text: str,
+        keep_metadata: bool,
+        replacements=None,
+        original_text: str | None = None,
+    ) -> WriteResult:
+        del replacements, original_text
         Presentation = _import_pptx()
         presentation = Presentation(source)
         replacements = _line_replacements(anonymized_text)

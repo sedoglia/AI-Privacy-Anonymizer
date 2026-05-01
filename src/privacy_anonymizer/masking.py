@@ -49,21 +49,54 @@ class EntityMapper:
         return placeholder
 
 
+@dataclass(frozen=True, slots=True)
+class ReplacementSpan:
+    start: int
+    end: int
+    label: str
+    original: str
+    replacement: str
+
+
+@dataclass(frozen=True, slots=True)
+class MaskingPlan:
+    text: str
+    replacements: list[ReplacementSpan]
+
+
 def mask_text(text: str, spans: list[DetectionSpan], mode: MaskingMode | str = MaskingMode.REPLACE) -> str:
+    return build_masking_plan(text, spans, mode).text
+
+
+def build_masking_plan(
+    text: str,
+    spans: list[DetectionSpan],
+    mode: MaskingMode | str = MaskingMode.REPLACE,
+) -> MaskingPlan:
     mapper = EntityMapper(mode=mode)
     parts: list[str] = []
+    replacements: list[ReplacementSpan] = []
     cursor = 0
     for span in sorted(spans, key=lambda item: item.start):
         if span.start < cursor:
             continue
         original = text[span.start : span.end]
+        replacement = mapper.placeholder(span.label, original)
         parts.append(text[cursor : span.start])
-        parts.append(mapper.placeholder(span.label, original))
+        parts.append(replacement)
+        replacements.append(
+            ReplacementSpan(
+                start=span.start,
+                end=span.end,
+                label=span.label,
+                original=original,
+                replacement=replacement,
+            )
+        )
         cursor = span.end
     parts.append(text[cursor:])
-    return "".join(parts)
+    return MaskingPlan("".join(parts), replacements)
 
 
 def _normalize_value(value: str) -> str:
     return " ".join(value.upper().split())
-

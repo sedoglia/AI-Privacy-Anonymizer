@@ -27,8 +27,16 @@ class EmlAdapter(FileAdapter):
             warnings.append(f"Allegati non processati ricorsivamente in questo adapter: {attachment_count}.")
         return FileContent("\n".join(parts), warnings=warnings)
 
-    def write_anonymized(self, source: Path, destination: Path, anonymized_text: str, keep_metadata: bool) -> WriteResult:
-        del source, keep_metadata
+    def write_anonymized(
+        self,
+        source: Path,
+        destination: Path,
+        anonymized_text: str,
+        keep_metadata: bool,
+        replacements=None,
+        original_text: str | None = None,
+    ) -> WriteResult:
+        del source, keep_metadata, replacements, original_text
         message = EmailMessage()
         message["Subject"] = "Messaggio anonimizzato"
         message["From"] = "anonimo@example.local"
@@ -51,4 +59,3 @@ def _message_body(message) -> str:
                 bodies.append(part.get_content())
         return "\n".join(str(body) for body in bodies)
     return str(message.get_content())
-
