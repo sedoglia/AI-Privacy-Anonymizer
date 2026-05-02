@@ -340,7 +340,7 @@ def _suppress_external_loggers() -> None:
             logger.addHandler(null)
     # Suppress known noisy runtime warnings from ML libraries
     warnings.filterwarnings("ignore", message=".*Sentence of length.*truncated.*", category=UserWarning)
-    warnings.filterwarnings("ignore", message=".*truncated to \d+.*", category=UserWarning)
+    warnings.filterwarnings("ignore", message=r".*truncated to \d+.*", category=UserWarning)
 
 
 def _configure_verbose_logging(log_file: str) -> None:
