@@ -9,8 +9,29 @@ Strumento Python locale per rilevare e mascherare automaticamente dati personali
 
 ---
 
+## Installazione e utilizzo rapido
+
+```bash
+# Installa tutto (ML, PDF, Office, Web UI, API REST)
+pip install "ai-privacy-anonymizer[full]"
+
+# Anonimizza un singolo file
+privacy-anonymizer documento.pdf
+
+# Anonimizza tutti i file in una cartella
+privacy-anonymizer ./cartella_input/ --output ./cartella_output/
+
+# Avvia l'interfaccia Web locale (nessuna installazione di Node.js richiesta)
+privacy-anonymizer-web
+```
+
+L'output viene salvato nella stessa cartella del file originale con il suffisso `_anonymized`. Per la Web UI, apri il browser all'indirizzo indicato nel terminale (di solito `http://127.0.0.1:7860`).
+
+---
+
 ## Indice
 
+- [Installazione e utilizzo rapido](#installazione-e-utilizzo-rapido)
 - [Architettura ibrida a 3 livelli](#architettura-ibrida-a-3-livelli)
 - [Categorie PII rilevate](#categorie-pii-rilevate)
 - [Formati file supportati](#formati-file-supportati)

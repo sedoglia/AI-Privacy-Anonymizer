@@ -9,8 +9,29 @@ A local Python tool for automatically detecting and masking personally identifia
 
 ---
 
+## Quick Start
+
+```bash
+# Install everything (ML, PDF, Office, Web UI, REST API)
+pip install "ai-privacy-anonymizer[full]"
+
+# Anonymize a single file
+privacy-anonymizer document.pdf
+
+# Anonymize all files in a folder
+privacy-anonymizer ./input_folder/ --output ./output_folder/
+
+# Launch the local Web UI (no Node.js required)
+privacy-anonymizer-web
+```
+
+Output is saved in the same folder as the original file with the `_anonymized` suffix. For the Web UI, open your browser at the address shown in the terminal (usually `http://127.0.0.1:7860`).
+
+---
+
 ## Table of Contents
 
+- [Quick Start](#quick-start)
 - [3-layer hybrid architecture](#3-layer-hybrid-architecture)
 - [Detected PII categories](#detected-pii-categories)
 - [Supported file formats](#supported-file-formats)
