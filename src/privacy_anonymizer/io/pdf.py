@@ -540,10 +540,16 @@ def _find_word_matches(words: list[dict], original: str) -> list[list[dict]]:
 
     Strategy:
     1. Exact token-sequence match on normalized tokens.
-    2. Fallback: substring match — concatenate normalized OCR tokens into one stream
-       and find spans whose joined normalized content equals the normalized target.
-       Useful when OCR groups characters differently than the detector input.
+    2. Substring match — concatenate normalized OCR tokens and find spans
+       whose joined content equals the normalized target.
+    3. Joined-token match — find word spans whose tokens, joined without
+       spaces, match the target's normalized tokens joined together.
+    4. Fuzzy fallback — if exact matching fails, use approximate string
+       matching to find OCR text that is similar to the target (>80% similarity).
+       Handles heavy OCR corruption (e.g., spacing errors, character shifts).
     """
+    import difflib
+
     target_tokens = [_normalize_token(token) for token in original.split()]
     target_tokens = [token for token in target_tokens if token]
     if not target_tokens:
@@ -553,6 +559,7 @@ def _find_word_matches(words: list[dict], original: str) -> list[list[dict]]:
     matches: list[list[dict]] = []
     seen: set[tuple[int, int]] = set()
 
+    # Exact token-sequence match
     for index in range(0, len(words) - len(target_tokens) + 1):
         if normalized_words[index : index + len(target_tokens)] == target_tokens:
             key = (index, index + len(target_tokens))
@@ -566,11 +573,7 @@ def _find_word_matches(words: list[dict], original: str) -> list[list[dict]]:
     if not target_concat:
         return matches
 
-    # Substring fallback: also accept the case where one OCR token contains
-    # the target (e.g., "sigdoglianisergio" contains "doglianisergio" because
-    # OCR glued the prefix "Sig." to the name). We treat such tokens as a
-    # full match on that single word's bbox — slightly over-redacts the
-    # surrounding chars but avoids leaving PII visible.
+    # Substring fallback
     for index, normalized in enumerate(normalized_words):
         if target_concat in normalized:
             key = (index, index + 1)
@@ -578,9 +581,7 @@ def _find_word_matches(words: list[dict], original: str) -> list[list[dict]]:
                 matches.append([words[index]])
                 seen.add(key)
 
-    # Also keep the original "consecutive tokens whose join EQUALS target"
-    # path for cases where OCR splits the target across multiple tokens
-    # without extra prefix/suffix characters.
+    # Joined-token match
     for start in range(len(words)):
         joined = ""
         for end in range(start, min(start + 8, len(words))):
@@ -593,6 +594,25 @@ def _find_word_matches(words: list[dict], original: str) -> list[list[dict]]:
                 break
             if len(joined) > len(target_concat):
                 break
+
+    if matches:
+        return matches
+
+    # Fuzzy fallback: approximate string matching for heavily OCR-corrupted text.
+    # Find word spans where the joined normalized text has >80% similarity
+    # to the target normalized text. This catches cases like spacing errors,
+    # character shifts, or token merging that exact matching misses.
+    min_ratio = 0.80
+    for start in range(len(words)):
+        for end in range(start + 1, min(start + 8, len(words) + 1)):
+            joined = "".join(normalized_words[start:end])
+            ratio = difflib.SequenceMatcher(None, joined, target_concat).ratio()
+            if ratio >= min_ratio:
+                key = (start, end)
+                if key not in seen:
+                    matches.append(words[start:end])
+                    seen.add(key)
+
     return matches
 
 
