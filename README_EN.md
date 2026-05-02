@@ -435,6 +435,20 @@ privacy-anonymizer document.txt --mode hash --export-vault vault.json --output a
 privacy-anonymizer --restore vault.json anon.txt --output restored.txt
 ```
 
+### Verbose logging (diagnostics)
+
+By default, all informational messages from external libraries (RapidOCR, transformers, etc.) are suppressed to keep the output clean. Using `--log` enables verbose logging mode: all messages (INFO, DEBUG, WARNING) are written to a file, including those from external libraries.
+
+```bash
+# Verbose log with auto-generated filename (privacy_anonymizer_YYYYMMDD_HHMMSS.log)
+privacy-anonymizer document.pdf --log
+
+# Verbose log to a specified file
+privacy-anonymizer ./folder/ --output ./out/ --log /tmp/debug.log
+```
+
+The log file includes timestamp, logger name, source file, and line number for every message. Console behavior remains unchanged (essential output only).
+
 ### Maintenance
 
 ```bash

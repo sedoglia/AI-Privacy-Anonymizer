@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 import re
 
@@ -84,14 +85,25 @@ def _import_ocr():
 def _load_rapidocr():
     try:
         from rapidocr_onnxruntime import RapidOCR  # type: ignore[import-not-found]
-        return RapidOCR()
     except ImportError:
-        pass
-    try:
-        from rapidocr import RapidOCR  # type: ignore[import-not-found]
-        return RapidOCR()
-    except ImportError as exc:
-        raise MissingOptionalDependencyError("rapidocr", "documents") from exc
+        try:
+            from rapidocr import RapidOCR  # type: ignore[import-not-found]
+        except ImportError as exc:
+            raise MissingOptionalDependencyError("rapidocr", "documents") from exc
+    # rapidocr/utils/log.py adds a StreamHandler and sets propagate=False at module
+    # import time. Redirect before instantiating so __init__ messages go to root
+    # instead of the console (silent in normal mode, file in --log mode).
+    _redirect_rapidocr_logging()
+    return RapidOCR()
+
+
+def _redirect_rapidocr_logging() -> None:
+    for name in ("RapidOCR", "rapidocr"):
+        logger = logging.getLogger(name)
+        for handler in logger.handlers[:]:
+            if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
+                logger.removeHandler(handler)
+        logger.propagate = True
 
 
 def _import_pillow():

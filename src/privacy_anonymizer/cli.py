@@ -3,7 +3,9 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import logging
 import sys
+from datetime import datetime
 from pathlib import Path
 
 from privacy_anonymizer.anonymizer import Anonymizer
@@ -49,12 +51,27 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help="Installa tutti gli extra (office, documents, ml, webui, api) e OPF in un unico passaggio",
     )
+    parser.add_argument(
+        "--log",
+        nargs="?",
+        const="",
+        default=None,
+        metavar="FILE",
+        help="Abilita log verboso su file. Senza argomento usa privacy_anonymizer_YYYYMMDD_HHMMSS.log nella directory corrente",
+    )
     return parser
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+
+    if args.log is not None:
+        log_file = args.log or _default_log_path()
+        _configure_verbose_logging(log_file)
+        print(f"Log verboso: {log_file}", file=sys.stderr)
+    else:
+        _suppress_external_loggers()
 
     if args.supported_formats:
         print("\n".join(supported_extensions()))
@@ -300,6 +317,34 @@ def _wipe_cache() -> int:
             shutil.rmtree(path, ignore_errors=True)
             removed += 1
     return removed
+
+
+def _default_log_path() -> str:
+    return f"privacy_anonymizer_{datetime.now().strftime('%Y%m%d_%H%M%S')}.log"
+
+
+def _suppress_external_loggers() -> None:
+    root = logging.getLogger()
+    if not root.handlers:
+        root.addHandler(logging.NullHandler())
+    root.setLevel(logging.WARNING)
+    for name in ("RapidOCR", "rapidocr", "transformers", "PIL", "onnxruntime", "httpx", "urllib3", "filelock", "huggingface_hub"):
+        logger = logging.getLogger(name)
+        logger.setLevel(logging.WARNING)
+        logger.propagate = False
+
+
+def _configure_verbose_logging(log_file: str) -> None:
+    handler = logging.FileHandler(log_file, encoding="utf-8")
+    handler.setLevel(logging.DEBUG)
+    handler.setFormatter(logging.Formatter(
+        "[%(levelname)s] %(asctime)s [%(name)s] %(filename)s:%(lineno)d: %(message)s"
+    ))
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
+    root.addHandler(handler)
+    for name in ("transformers", "transformers.tokenization_utils_base", "huggingface_hub", "RapidOCR", "rapidocr"):
+        logging.getLogger(name).setLevel(logging.DEBUG)
 
 
 def _launch_api() -> None:
