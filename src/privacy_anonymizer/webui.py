@@ -106,4 +106,4 @@ def create_app():
 
 
 def launch() -> None:
-    create_app().launch()
+    create_app().launch(inbrowser=True)
