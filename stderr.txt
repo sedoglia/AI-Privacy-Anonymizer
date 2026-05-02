@@ -1,0 +1,21 @@
+[32m[INFO] 2026-05-02 17:05:11,189 [RapidOCR] base.py:22: Using engine_name: onnxruntime[0m
+[32m[INFO] 2026-05-02 17:05:11,278 [RapidOCR] download_file.py:60: File exists and is valid: C:\Users\sedog\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\rapidocr\models\ch_PP-OCRv4_det_mobile.onnx[0m
+[32m[INFO] 2026-05-02 17:05:11,279 [RapidOCR] main.py:57: Using C:\Users\sedog\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\rapidocr\models\ch_PP-OCRv4_det_mobile.onnx[0m
+[32m[INFO] 2026-05-02 17:05:11,375 [RapidOCR] base.py:22: Using engine_name: onnxruntime[0m
+[32m[INFO] 2026-05-02 17:05:11,377 [RapidOCR] download_file.py:60: File exists and is valid: C:\Users\sedog\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\rapidocr\models\ch_ppocr_mobile_v2.0_cls_mobile.onnx[0m
+[32m[INFO] 2026-05-02 17:05:11,378 [RapidOCR] main.py:57: Using C:\Users\sedog\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\rapidocr\models\ch_ppocr_mobile_v2.0_cls_mobile.onnx[0m
+[32m[INFO] 2026-05-02 17:05:11,426 [RapidOCR] base.py:22: Using engine_name: onnxruntime[0m
+[32m[INFO] 2026-05-02 17:05:11,434 [RapidOCR] download_file.py:60: File exists and is valid: C:\Users\sedog\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\rapidocr\models\ch_PP-OCRv4_rec_mobile.onnx[0m
+[32m[INFO] 2026-05-02 17:05:11,434 [RapidOCR] main.py:57: Using C:\Users\sedog\AppData\Local\Python\pythoncore-3.14-64\Lib\site-packages\rapidocr\models\ch_PP-OCRv4_rec_mobile.onnx[0m
+[DEBUG page 0] MATCHED '29/09/2025' via char_offset (1 groups)
+[DEBUG page 0] MATCHED '29/09/2026' via char_offset (1 groups)
+[DEBUG page 0] MATCHED 'Sig.DoGLIANISERGIo' via char_offset (1 groups)
+[DEBUG page 0] MATCHED '23/05/1980' via char_offset (1 groups)
+[DEBUG page 0] MATCHED 'ToRINO' via char_offset (1 groups)
+[DEBUG page 0] MATCHED 'DGLSRG80E23L219U' via char_offset (1 groups)
+[DEBUG page 0] MATCHED 'BoNoMoKATIA' via char_offset (1 groups)
+[DEBUG page 0] MATCHED 'A.S.L.n. 203' via char_offset (1 groups)
+[DEBUG page 0] MATCHED 'Classe AMD SID' via char_offset (1 groups)
+[DEBUG page 0] MATCHED 'BONOMOKATIA' via char_offset (1 groups)
+[DEBUG page 0] MATCHED 'BONOMOKATIA' via char_offset (1 groups)
+[DEBUG page 0] MATCHED '29/09/2025' via char_offset (1 groups)

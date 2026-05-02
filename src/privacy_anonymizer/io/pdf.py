@@ -432,10 +432,13 @@ def _write_ocr_redacted_pdf(
                 matched_via = None  # Track which strategy matched
 
                 if has_char_offsets:
+                    # Match words that overlap the span (not just contain it).
+                    # This handles cases where a span is a substring of a word,
+                    # e.g., "BoNoMoKATIA" at [436-447] is part of "PT:BoNoMoKATIA" at [433-447].
                     span_words = [
                         w for w in words
-                        if w.get("char_start", -1) >= replacement.start
-                        and w.get("char_end", -1) <= replacement.end
+                        if w.get("char_start", -1) <= replacement.end
+                        and w.get("char_end", -1) >= replacement.start
                     ]
                     if span_words:
                         groups.append(span_words)
