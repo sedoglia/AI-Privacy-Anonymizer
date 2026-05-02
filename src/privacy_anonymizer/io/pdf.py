@@ -424,18 +424,24 @@ def _write_ocr_redacted_pdf(
                 fill = (0, 0, 0) if set(replacement.replacement) == {"█"} else (1, 1, 1)
                 annot_text = "" if fill == (0, 0, 0) else replacement.replacement
 
+                groups: list[list[dict]] = []
+
                 if has_char_offsets:
                     span_words = [
                         w for w in words
                         if w.get("char_start", -1) >= replacement.start
                         and w.get("char_end", -1) <= replacement.end
                     ]
-                    groups: list[list[dict]] = [span_words] if span_words else []
-                else:
+                    if span_words:
+                        groups.append(span_words)
+
+                # Fallback to text-content matching when char-offset matching fails or
+                # offsets are absent. This handles OCR character variants (O→0, etc.)
+                # where the detected text doesn't match word boxes by position.
+                if not groups:
                     original = replacement.original.strip()
-                    if not original:
-                        continue
-                    groups = _find_word_matches(words, original)
+                    if original:
+                        groups = _find_word_matches(words, original)
 
                 for match in groups:
                     if not match:
