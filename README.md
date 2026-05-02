@@ -256,12 +256,6 @@ pip install git+https://github.com/openai/privacy-filter
 
 Richiede ~3 GB di spazio per il download del modello al primo avvio.
 
-### Modello spaCy italiano (opzionale, per Presidio)
-
-```bash
-python -m spacy download it_core_news_lg
-```
-
 ### Verifica setup
 
 ```bash
