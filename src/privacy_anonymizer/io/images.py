@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import logging
+import time
 from pathlib import Path
 import re
+
+logger = logging.getLogger(__name__)
 
 from privacy_anonymizer.errors import MissingOptionalDependencyError
 from privacy_anonymizer.io.base import FileAdapter, FileContent, WriteResult
@@ -16,13 +19,16 @@ class ImageAdapter(FileAdapter):
         Image, engine = _import_ocr()
         import numpy as np  # type: ignore[import-not-found]
 
+        logger.info("OCR lettura: %s", path.name)
+        t0 = time.perf_counter()
         image = Image.open(path).convert("RGB")
         rows = _normalize_rapidocr_result(engine(np.array(image)))
         text = "\n".join(text_value for _, text_value, _ in rows if text_value)
-        warnings = []
+        logger.info("OCR completato: %d caratteri estratti in %.2fs da %s", len(text), time.perf_counter() - t0, path.name)
+        ocr_warnings = []
         if not text.strip():
-            warnings.append("OCR non ha estratto testo dall'immagine.")
-        return FileContent(text, warnings=warnings)
+            ocr_warnings.append("OCR non ha estratto testo dall'immagine.")
+        return FileContent(text, warnings=ocr_warnings)
 
     def write_anonymized(
         self,
@@ -98,11 +104,13 @@ def _load_rapidocr():
 
 
 def _redirect_rapidocr_logging() -> None:
+    # Remove all handlers (including the NullHandler/FileHandler pre-added by cli.py)
+    # and let messages propagate to root: silent at WARNING level, written to file
+    # at DEBUG level (--log mode). This avoids duplicate log entries.
     for name in ("RapidOCR", "rapidocr"):
         logger = logging.getLogger(name)
         for handler in logger.handlers[:]:
-            if isinstance(handler, logging.StreamHandler) and not isinstance(handler, logging.FileHandler):
-                logger.removeHandler(handler)
+            logger.removeHandler(handler)
         logger.propagate = True
 
 

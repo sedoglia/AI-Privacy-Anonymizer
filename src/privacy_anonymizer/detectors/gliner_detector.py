@@ -18,6 +18,7 @@ from privacy_anonymizer.models import DetectionSpan
 # methods called from ThreadPoolExecutor workers.
 warnings.filterwarnings("ignore", message=".*sentencepiece tokenizer.*byte fallback.*")
 warnings.filterwarnings("ignore", message=".*resume_download.*", category=FutureWarning)
+warnings.filterwarnings("ignore", message=".*Sentence of length.*truncated.*", category=UserWarning)
 
 DEFAULT_LABELS = [
     "person",

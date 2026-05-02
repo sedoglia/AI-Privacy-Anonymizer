@@ -5,6 +5,7 @@ import importlib.util
 import json
 import logging
 import sys
+import warnings
 from datetime import datetime
 from pathlib import Path
 
@@ -328,23 +329,42 @@ def _suppress_external_loggers() -> None:
     if not root.handlers:
         root.addHandler(logging.NullHandler())
     root.setLevel(logging.WARNING)
+    null = logging.NullHandler()
     for name in ("RapidOCR", "rapidocr", "transformers", "PIL", "onnxruntime", "httpx", "urllib3", "filelock", "huggingface_hub"):
         logger = logging.getLogger(name)
         logger.setLevel(logging.WARNING)
         logger.propagate = False
+        # Pre-add a NullHandler so libraries that check `if not logger.handlers`
+        # at import time (e.g. rapidocr/utils/log.py) do NOT add a StreamHandler.
+        if not logger.handlers:
+            logger.addHandler(null)
+    # Suppress known noisy runtime warnings from ML libraries
+    warnings.filterwarnings("ignore", message=".*Sentence of length.*truncated.*", category=UserWarning)
+    warnings.filterwarnings("ignore", message=".*truncated to \d+.*", category=UserWarning)
 
 
 def _configure_verbose_logging(log_file: str) -> None:
+    formatter = logging.Formatter(
+        "[%(levelname)s] %(asctime)s [%(name)s] %(filename)s:%(lineno)d: %(message)s"
+    )
     handler = logging.FileHandler(log_file, encoding="utf-8")
     handler.setLevel(logging.DEBUG)
-    handler.setFormatter(logging.Formatter(
-        "[%(levelname)s] %(asctime)s [%(name)s] %(filename)s:%(lineno)d: %(message)s"
-    ))
+    handler.setFormatter(formatter)
     root = logging.getLogger()
     root.setLevel(logging.DEBUG)
     root.addHandler(handler)
-    for name in ("transformers", "transformers.tokenization_utils_base", "huggingface_hub", "RapidOCR", "rapidocr"):
+    # Pre-add the file handler to RapidOCR loggers so their Logger.__init__
+    # sees non-empty handlers and skips adding a StreamHandler.
+    for name in ("RapidOCR", "rapidocr"):
+        ocr_logger = logging.getLogger(name)
+        ocr_logger.setLevel(logging.DEBUG)
+        if not ocr_logger.handlers:
+            ocr_logger.addHandler(handler)
+    # Reset levels on loggers suppressed at import time by detector modules
+    for name in ("transformers", "transformers.tokenization_utils_base", "huggingface_hub"):
         logging.getLogger(name).setLevel(logging.DEBUG)
+    # Redirect Python warnings (e.g. truncation warnings) to the log file
+    logging.captureWarnings(True)
 
 
 def _launch_api() -> None:

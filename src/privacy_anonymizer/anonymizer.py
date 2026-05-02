@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
 import time
 from dataclasses import dataclass
@@ -8,6 +9,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from privacy_anonymizer.config import LayerConfig, MaskingMode
+
+logger = logging.getLogger(__name__)
 from privacy_anonymizer.detectors import GlinerDetector, ItalianPatternDetector, OpfDetector
 from privacy_anonymizer.io import SUPPORTED_EXTENSIONS, get_adapter
 from privacy_anonymizer.masking import ReplacementSpan, build_masking_plan, mask_text
@@ -100,6 +103,7 @@ class Anonymizer:
             else None
         )
         self.opf_detector = OpfDetector(self.config.opf_recall_mode) if self.config.opf_enabled else None
+        logger.info("Layer attivi: %s", ", ".join(self._layers_used()) or "nessuno")
 
     def process_text(self, text: str, language: str = "it") -> tuple[str, dict[str, int]]:
         spans = self.detect_text(text, language=language)
@@ -133,9 +137,12 @@ class Anonymizer:
         source = Path(path)
         adapter = get_adapter(source)
 
+        logger.info("Elaborazione: %s", source.name)
         started = time.perf_counter()
         content = adapter.read_text(source)
+        logger.info("Testo estratto: %d caratteri da %s", len(content.text), source.name)
         spans = self.detect_text(content.text)
+        logger.info("Rilevati %d span PII in %s", len(spans), source.name)
         plan = build_masking_plan(content.text, spans, self.config.masking_mode)
         destination = Path(output_path) if output_path else self._output_path(source, output_dir, adapter.output_suffix(source))
         output_path_resolved = None if dry_run else destination
@@ -144,6 +151,7 @@ class Anonymizer:
 
         if output_path_resolved is not None:
             output_path_resolved.parent.mkdir(parents=True, exist_ok=True)
+            logger.info("Scrittura output: %s", output_path_resolved.name)
             write_result = adapter.write_anonymized(
                 source,
                 output_path_resolved,
@@ -156,11 +164,13 @@ class Anonymizer:
             write_warnings.extend(write_result.warnings)
             metadata_stripped = write_result.metadata_stripped
 
+        elapsed = time.perf_counter() - started
+        logger.info("Completato %s: %d span in %.2fs", source.name, len(spans), elapsed)
         audit = self._audit_report(
             source_file=source,
             output_file=output_path_resolved,
             spans=spans,
-            elapsed=time.perf_counter() - started,
+            elapsed=elapsed,
             warnings=[*content.warnings, *write_warnings],
             metadata_stripped=metadata_stripped,
         )
@@ -190,6 +200,7 @@ class Anonymizer:
         should_recurse = self.config.recursive if recursive is None else recursive
         iterator = source_dir.rglob("*") if should_recurse else source_dir.glob("*")
         candidates = sorted(path for path in iterator if path.is_file())
+        logger.info("Cartella %s: %d file trovati", source_dir.name, len(candidates))
         results: list[ProcessResult] = []
         skipped: list[tuple[Path, str]] = []
 
@@ -227,13 +238,18 @@ class Anonymizer:
 
         spans: list[DetectionSpan] = []
         if self.config.parallel and len(tasks) > 1 and not self.config.low_memory:
+            logger.info("Rilevamento parallelo: %s", ", ".join(n for n, _ in tasks))
             from concurrent.futures import ThreadPoolExecutor
             with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
                 for partial in executor.map(lambda task: task[1](), tasks):
                     spans.extend(partial)
         else:
             for name, run in tasks:
-                spans.extend(run())
+                logger.info("Layer %s: avvio", name)
+                t0 = time.perf_counter()
+                result = run()
+                logger.info("Layer %s: %d span in %.2fs", name, len(result), time.perf_counter() - t0)
+                spans.extend(result)
                 if self.config.low_memory and name == "opf" and self.opf_detector is not None:
                     self.opf_detector.release()
                 if self.config.low_memory and name == "gliner" and self.gliner_detector is not None:
