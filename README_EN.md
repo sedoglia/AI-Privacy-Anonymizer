@@ -79,7 +79,7 @@ semantic context      Italian-native        deterministic
 
 - Zero-shot model fine-tuned on Italian for named entity recognition
 - Over 60 PII categories including those absent from OPF: `passport_number`, `driver_license`, `health_insurance_id`, `medical_condition`, `credit_card_number`, `cvv`, `blood_type`, `username`, `digital_signature`, `organization`
-- Configurable threshold (default: 0.5) to balance recall and precision
+- Configurable threshold (default: 0.3) to balance recall and precision
 - Automatic model download (~300 MB) on first use
 - Apache 2.0 license; install via `[ml]` extra
 
@@ -328,33 +328,42 @@ privacy-anonymizer contratto.docx --mode generalize
 privacy-anonymizer dati.xlsx --mode hash
 ```
 
-### Enable hybrid stack (L1 + L2 + L3)
+### Managing active layers
+
+The full hybrid stack (OPF + GLiNER + patterns) is active by default. To reduce layers:
 
 ```bash
-# All layers
-privacy-anonymizer file.txt --layers hybrid
-
 # GLiNER + patterns only (without OPF)
-privacy-anonymizer file.txt --layers hybrid --disable-layer opf
+privacy-anonymizer file.txt --disable-layer opf
 
 # OPF + patterns only (without GLiNER)
-privacy-anonymizer file.txt --layers hybrid --disable-layer gliner
+privacy-anonymizer file.txt --disable-layer gliner
 
-# Italian patterns only (default, fastest)
-privacy-anonymizer file.txt --layers pattern-only
+# Italian patterns only (fastest, no ML dependencies)
+privacy-anonymizer file.txt --pattern-only
 ```
 
 ### OPF recall configuration
 
 ```bash
 # Conservative mode (high precision, lower recall)
-privacy-anonymizer file.txt --layers hybrid --recall-mode conservative
+privacy-anonymizer file.txt --recall-mode conservative
 
-# Balanced mode (default — balanced for chatbot use)
-privacy-anonymizer file.txt --layers hybrid --recall-mode balanced
+# Balanced mode (balanced for chatbot use)
+privacy-anonymizer file.txt --recall-mode balanced
 
-# Aggressive mode (maximum recall)
-privacy-anonymizer file.txt --layers hybrid --recall-mode aggressive
+# Aggressive mode (default — maximum recall)
+privacy-anonymizer file.txt --recall-mode aggressive
+```
+
+### GLiNER configuration
+
+```bash
+# Confidence threshold (default: 0.3 — higher values increase precision, reduce recall)
+privacy-anonymizer file.txt --gliner-threshold 0.5
+
+# Alternative model
+privacy-anonymizer file.txt --gliner-model urchade/gliner_multi_pii-v1
 ```
 
 ### Docling parser
@@ -417,10 +426,10 @@ privacy-anonymizer documento.docx --keep-metadata
 
 ```bash
 # Low-memory mode: layers run sequentially, RAM freed between each
-privacy-anonymizer file.txt --layers hybrid --low-memory
+privacy-anonymizer file.txt --low-memory
 
 # Parallelization: layers run on separate threads (incompatible with --low-memory)
-privacy-anonymizer file.txt --layers hybrid --parallel
+privacy-anonymizer file.txt --parallel
 
 # Force CPU (disables GPU even if available)
 privacy-anonymizer file.txt --device cpu
@@ -847,7 +856,7 @@ vault = plan.entity_vault()  # dict {placeholder: {label, original}}
 | EML/MSG: attachments not processed recursively | PII in attachments undetected | Audit log warns; process attachments separately |
 | DOCX track-changes: revisions accepted but not explicitly purged | Residual data in document | Use Word to "Accept all" before final export |
 | Text in images embedded in DOCX/PPTX | Not analyzed in text pass | Docling extracts embedded images → OCR processing |
-| Full hybrid stack (all 3 layers): ~5-6 GB RAM, ~2-3x slower | Not viable on limited hardware | `--low-memory` or `--layers pattern-only` |
+| Full hybrid stack (all 3 layers): ~5-6 GB RAM, ~2-3x slower | Not viable on limited hardware | `--low-memory` or `--pattern-only` |
 
 ---
 

@@ -2,7 +2,7 @@
 
 Esecuzione:
     python scripts/benchmark.py
-    python scripts/benchmark.py --layers hybrid --pages 100
+    python scripts/benchmark.py --gliner --pages 100
 """
 from __future__ import annotations
 
@@ -30,11 +30,11 @@ def build_corpus(pages: int) -> str:
     return "\n".join(PAGE_TEMPLATE.format(n=i, nmod=(i % 250) + 1) for i in range(1, pages + 1))
 
 
-def run_benchmark(pages: int, runs: int, layers: str) -> dict:
+def run_benchmark(pages: int, runs: int, gliner: bool) -> dict:
     text = build_corpus(pages)
     config = LayerConfig(
         pattern_enabled=True,
-        gliner_enabled=(layers == "hybrid"),
+        gliner_enabled=gliner,
         opf_enabled=False,
     )
     anonymizer = Anonymizer(config=config)
@@ -51,7 +51,7 @@ def run_benchmark(pages: int, runs: int, layers: str) -> dict:
     return {
         "pages": pages,
         "runs": runs,
-        "layers": layers,
+        "gliner": gliner,
         "characters": len(text),
         "spans_detected": span_counts[0],
         "min_seconds": round(min(timings), 4),
@@ -65,12 +65,12 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Benchmark PII detection")
     parser.add_argument("--pages", type=int, default=50, help="Pagine sintetiche (~7 PII per pagina)")
     parser.add_argument("--runs", type=int, default=3, help="Numero di esecuzioni per la media")
-    parser.add_argument("--layers", choices=["pattern-only", "hybrid"], default="pattern-only")
+    parser.add_argument("--gliner", action="store_true", help="Abilita il layer GLiNER nel benchmark")
     parser.add_argument("--output", help="Salva risultati in JSON")
     args = parser.parse_args()
 
-    print(f"Benchmark: {args.pages} pagine x {args.runs} run, layers={args.layers}")
-    metrics = run_benchmark(args.pages, args.runs, args.layers)
+    print(f"Benchmark: {args.pages} pagine x {args.runs} run, gliner={args.gliner}")
+    metrics = run_benchmark(args.pages, args.runs, args.gliner)
     for key, value in metrics.items():
         print(f"  {key}: {value}")
 

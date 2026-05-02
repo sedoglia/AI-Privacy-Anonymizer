@@ -39,7 +39,7 @@ Anche con stack ibrido completo su CPU, il target <90s è atteso entro il limite
 
 ```bash
 # Con GLiNER (richiede [ml] extra + ~300 MB model download)
-python scripts/benchmark.py --pages 50 --layers hybrid
+python scripts/benchmark.py --pages 50 --gliner
 
 # Riprodurre tutti
 python scripts/benchmark.py --pages 100 --runs 5 --output benchmark_100.json
@@ -58,7 +58,7 @@ Il Layer 3 non è mai il collo di bottiglia anche su batch enterprise.
 
 ```bash
 python scripts/benchmark.py --pages 50 --runs 3
-python scripts/benchmark.py --pages 200 --runs 5 --layers pattern-only
+python scripts/benchmark.py --pages 200 --runs 5
 ```
 
 I risultati possono essere salvati in JSON con `--output benchmark.json`.

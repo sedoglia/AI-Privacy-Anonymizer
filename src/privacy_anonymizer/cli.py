@@ -20,7 +20,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--output", help="Directory o file di output")
     parser.add_argument("--mode", choices=[mode.value for mode in MaskingMode], default=MaskingMode.REPLACE.value)
     parser.add_argument("--disable-layer", action="append", choices=["opf", "gliner", "pattern"], default=[])
-    parser.add_argument("--layers", choices=["pattern-only", "hybrid"], default="hybrid")
+    parser.add_argument("--pattern-only", action="store_true", help="Usa solo il layer pattern, disabilitando GLiNER e OPF")
     parser.add_argument("--parser", choices=["built-in", "docling"], default="built-in")
     parser.add_argument("--recall-mode", choices=["conservative", "balanced", "aggressive"], default="aggressive")
     parser.add_argument("--gliner-model", default="urchade/gliner_multi_pii-v1")
@@ -98,8 +98,8 @@ def main(argv: list[str] | None = None) -> int:
         parser.error("specifica un file oppure --text")
 
     pattern_enabled = "pattern" not in args.disable_layer
-    gliner_enabled = args.layers == "hybrid" and "gliner" not in args.disable_layer
-    opf_enabled = args.layers == "hybrid" and "opf" not in args.disable_layer
+    gliner_enabled = not args.pattern_only and "gliner" not in args.disable_layer
+    opf_enabled = not args.pattern_only and "opf" not in args.disable_layer
     anonymizer = Anonymizer(
         LayerConfig(
             parser=args.parser,

@@ -458,7 +458,7 @@ privacy-anonymizer file.docx --dry-run
 privacy-anonymizer file.txt --recall-mode aggressive
 
 # Solo identificatori italiani strutturati (L3 only, veloce)
-privacy-anonymizer cedolino.pdf --layers pattern-only
+privacy-anonymizer cedolino.pdf --pattern-only
 
 # CPU esplicita (no GPU)
 privacy-anonymizer file.txt --device cpu
