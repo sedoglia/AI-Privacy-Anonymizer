@@ -1,6 +1,12 @@
+import sys
+import types
+from pathlib import Path
+
 from privacy_anonymizer import Anonymizer
 from privacy_anonymizer.config import LayerConfig
 from privacy_anonymizer.io import supported_extensions
+from privacy_anonymizer.masking import build_masking_plan
+from privacy_anonymizer.models import DetectionSpan
 
 _PATTERN_ONLY = LayerConfig(opf_enabled=False, gliner_enabled=False, parallel=False)
 
@@ -47,3 +53,37 @@ def test_process_folder_preserves_relative_paths_and_skips_unknown(tmp_path) -> 
 
 def test_supported_formats_include_text_and_office_extensions() -> None:
     assert {".txt", ".docx", ".xlsx", ".pptx"} <= set(supported_extensions())
+
+
+def test_build_masking_plan_returns_replacements() -> None:
+    plan = build_masking_plan("email mario.rossi@example.com", [DetectionSpan(6, 29, "EMAIL", "pattern")])
+
+    assert plan.text == "email [EMAIL_1]"
+    assert plan.replacements[0].original == "mario.rossi@example.com"
+    assert plan.replacements[0].replacement == "[EMAIL_1]"
+
+
+class _FakeDoclingDocument:
+    def export_to_markdown(self):
+        return "CF RSSMRA80A01L219X"
+
+
+class _FakeConversionResult:
+    document = _FakeDoclingDocument()
+
+
+class _FakeDocumentConverter:
+    def convert(self, path):
+        return _FakeConversionResult()
+
+
+def test_docling_parser_can_be_selected(monkeypatch, tmp_path: Path) -> None:
+    fake_module = types.SimpleNamespace(DocumentConverter=_FakeDocumentConverter)
+    monkeypatch.setitem(sys.modules, "docling", types.ModuleType("docling"))
+    monkeypatch.setitem(sys.modules, "docling.document_converter", fake_module)
+    source = tmp_path / "input.txt"
+    source.write_text("not used", encoding="utf-8")
+
+    result = Anonymizer(LayerConfig(parser="docling")).process_file(source)
+
+    assert result.anonymized_text == "CF [CF_1]"
