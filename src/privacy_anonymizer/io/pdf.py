@@ -366,12 +366,15 @@ def _write_ocr_redacted_pdf(
     replacements: list[ReplacementSpan],
     keep_metadata: bool,
     cached_words: list[list[dict]] | None = None,
+    debug: bool = False,
 ) -> int:
     """Redact a scanned PDF by locating word boxes via RapidOCR on each rendered page.
 
     If cached_words is provided (from read_text), reuses that OCR output instead of
     re-running OCR, ensuring the text used for entity detection and the word coordinates
     used for redaction come from the exact same OCR pass.
+
+    If debug=True, prints detailed matching information for each replacement span.
     """
     fitz = _import_fitz()
 
@@ -414,10 +417,11 @@ def _write_ocr_redacted_pdf(
             seen_rects: set[tuple[float, float, float, float]] = set()
 
             # Determine whether words carry char-offset information (set during OCR
-            # in _try_rapidocr_pdf). If so, use positional matching — it is immune to
-            # OCR character variants because it ties directly to the same text that NER
-            # ran on. Fall back to text-content matching when offsets are absent
-            # (e.g., redaction without a cached OCR pass).
+            # in _try_rapidocr_pdf). If so, try positional matching first — it is
+            # immune to OCR character variants. However, when word tokens contain
+            # punctuation (e.g., "PT:BoNoMoKATIA"), char-offset tracking is unreliable
+            # because detected spans may be substrings of those tokens. Always fall back
+            # to text-content matching for robustness.
             has_char_offsets = words and "char_start" in words[0]
 
             for replacement in replacements:
@@ -425,6 +429,7 @@ def _write_ocr_redacted_pdf(
                 annot_text = "" if fill == (0, 0, 0) else replacement.replacement
 
                 groups: list[list[dict]] = []
+                matched_via = None  # Track which strategy matched
 
                 if has_char_offsets:
                     span_words = [
@@ -434,14 +439,36 @@ def _write_ocr_redacted_pdf(
                     ]
                     if span_words:
                         groups.append(span_words)
+                        matched_via = "char_offset"
 
-                # Fallback to text-content matching when char-offset matching fails or
-                # offsets are absent. This handles OCR character variants (O→0, etc.)
-                # where the detected text doesn't match word boxes by position.
-                if not groups:
+                # Always try text-content matching as primary/fallback. This handles:
+                # 1. OCR character variants (O→0, I→1, etc.)
+                # 2. Tokens with punctuation where char-offset tracking is unreliable
+                # 3. Any case where positional matching failed
+                if not groups or not matched_via:
                     original = replacement.original.strip()
                     if original:
-                        groups = _find_word_matches(words, original)
+                        fallback_groups = _find_word_matches(words, original)
+                        if fallback_groups:
+                            groups = fallback_groups
+                            matched_via = "text_content"
+
+                if debug and not groups:
+                    import sys
+                    print(
+                        f"[DEBUG page {page_index}] NO MATCH for '{replacement.original}' "
+                        f"(span {replacement.start}-{replacement.end}). "
+                        f"Words in page: {len(words)}. "
+                        f"Word texts: {[w['text'] for w in words[:20]]}{'...' if len(words) > 20 else ''}",
+                        file=sys.stderr,
+                    )
+                elif debug:
+                    import sys
+                    print(
+                        f"[DEBUG page {page_index}] MATCHED '{replacement.original}' "
+                        f"via {matched_via} ({len(groups)} groups)",
+                        file=sys.stderr,
+                    )
 
                 for match in groups:
                     if not match:
