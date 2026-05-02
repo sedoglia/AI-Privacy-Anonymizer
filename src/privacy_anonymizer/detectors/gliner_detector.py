@@ -95,6 +95,8 @@ class GlinerDetector:
 
     def detect(self, text: str) -> list[DetectionSpan]:
         model = self._load_model()
+        if model is None:
+            return []
         entities = model.predict_entities(text, self.labels, threshold=self.threshold)
         spans = [
             DetectionSpan(
@@ -114,10 +116,19 @@ class GlinerDetector:
     def _load_model(self):
         if self._model is not None:
             return self._model
+        if getattr(self, "_unavailable", False):
+            return None
         try:
             from gliner import GLiNER
-        except ImportError as exc:
-            raise RuntimeError("Layer GLiNER non disponibile: installa con `python -m pip install -e .[ml]`.") from exc
+        except ImportError:
+            import sys
+            print(
+                "[warning] Layer GLiNER non disponibile: pacchetto 'gliner' non installato."
+                " Per il layer ML: pip install -e .[ml]. Patterns restano attivi.",
+                file=sys.stderr,
+            )
+            self._unavailable = True
+            return None
         _suppress_hf_progress()
         self._model = GLiNER.from_pretrained(self.model_name)
         return self._model
