@@ -40,9 +40,6 @@ The project uses a hybrid architecture combining three complementary detectors t
 INPUT FILE
     │
     ▼
-DOCLING (optional) ─── multi-format parser with AI layout and OCR
-    │
-    ▼
 TEXT SEGMENTER ─── splits into sentence-respecting chunks
     │
     ├─────────────────────┬─────────────────────┐
@@ -832,7 +829,7 @@ vault = plan.entity_vault()  # dict {placeholder: {label, original}}
 | GLiNER is not L1: F1 ~81% vs ~96% OPF on EN benchmarks | False negatives on non-OPF categories | Complementary layer: covers categories absent from OPF |
 | EML/MSG: attachments not processed recursively | PII in attachments undetected | Audit log warns; process attachments separately |
 | DOCX track-changes: revisions accepted but not explicitly purged | Residual data in document | Use Word to "Accept all" before final export |
-| Text in images embedded in DOCX/PPTX | Not analyzed in text pass | Docling extracts embedded images → OCR processing |
+| Text in images embedded in DOCX/PPTX | Not analyzed in text pass | Extract images manually and process them as separate files |
 | Full hybrid stack (all 3 layers): ~5-6 GB RAM, ~2-3x slower | Not viable on limited hardware | `--low-memory` or `--pattern-only` |
 
 ---

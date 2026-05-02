@@ -40,9 +40,6 @@ Il progetto adotta un'architettura ibrida che combina tre rilevatori complementa
 INPUT FILE
     │
     ▼
-DOCLING (opzionale) ─── parser multi-formato con AI layout e OCR
-    │
-    ▼
 TEXT SEGMENTER ─── divide in chunk rispettando i confini di frase
     │
     ├─────────────────────┬─────────────────────┐
@@ -834,7 +831,7 @@ vault = plan.entity_vault()  # dict {placeholder: {label, original}}
 | GLiNER non è L1: F1 ~81% vs ~96% OPF su benchmark EN | Falsi negativi su categorie non-OPF | Layer complementare: copre categorie assenti in OPF |
 | EML/MSG: allegati non processati ricorsivamente | PII negli allegati non rilevate | Audit log avvisa; processare gli allegati separatamente |
 | DOCX track-changes: revisioni accettate ma non cancellate esplicitamente | Dati residui nel documento | Usare Word per "Accetta tutto" prima dell'export finale |
-| Testo in immagini incorporate in DOCX/PPTX | Non analizzato nel passaggio testo | Docling estrae le immagini embedded → elaborazione OCR |
+| Testo in immagini incorporate in DOCX/PPTX | Non analizzato nel passaggio testo | Estrarre le immagini manualmente e processarle come file separati |
 | Stack ibrido (tutti e 3 i layer): ~5-6 GB RAM, ~2-3x più lento | Impraticabile su hardware limitato | `--low-memory` o `--pattern-only` |
 
 ---
