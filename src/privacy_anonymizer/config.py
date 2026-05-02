@@ -25,3 +25,14 @@ class LayerConfig:
     recursive: bool = True
     low_memory: bool = False
     parallel: bool = True
+    # Performance tuning
+    chunk_long_text: bool = True
+    chunk_threshold: int = 4000
+    chunk_size: int = 1500
+    chunk_overlap: int = 100
+    chunk_max_workers: int = 4
+    ocr_dpi: int = 300
+    ocr_parallel_pages: bool = True
+    ocr_max_workers: int = 4
+    ml_skip_extensions: tuple[str, ...] = (".log",)
+    ml_skip_min_chars: int = 8000

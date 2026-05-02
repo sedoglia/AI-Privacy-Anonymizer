@@ -421,8 +421,36 @@ privacy-anonymizer file.txt --low-memory
 # Parallelizzazione: layer su thread separati (incompatibile con --low-memory)
 privacy-anonymizer file.txt --parallel
 
-# Forza CPU (disabilita GPU anche se disponibile)
+# Device ML: auto (default, usa CUDA/MPS se disponibili), cpu, cuda, mps
+privacy-anonymizer file.txt --device auto
 privacy-anonymizer file.txt --device cpu
+```
+
+#### Acceleratori disponibili
+
+| Flag | Effetto | Quando usarlo |
+|------|---------|---------------|
+| `--device auto` (default) | Sceglie CUDA → MPS → CPU in base alla disponibilità | Sempre, se non sai cosa scegliere |
+| `--ocr-dpi 200` | Riduce DPI di rendering OCR da 300 → 200 (~50% più veloce, leggera perdita di qualità) | PDF scansionati con testo grande/leggibile |
+| `--no-ocr-parallel-pages` | Disattiva l'OCR parallelo per pagina | Se la macchina ha poca RAM |
+| `--ocr-max-workers N` | Numero max di thread per OCR pagine in parallelo (default 4) | Adatta al numero di core CPU disponibili |
+| `--no-chunk-long-text` | Disattiva il chunking parallelo dei testi lunghi per i layer ML | Per debugging o per testi <4 KB |
+| `--chunk-threshold N` | Lunghezza minima per attivare il chunking (default 4000 caratteri) | Aumenta per evitare chunking su testi medi |
+| `--chunk-size N` | Lunghezza in caratteri di ogni finestra (default 1500) | Riduci se il modello tronca, aumenta se vuoi più contesto |
+| `--chunk-overlap N` | Sovrapposizione tra finestre (default 100) | Aumenta se vedi entità tagliate ai bordi |
+| `--chunk-max-workers N` | Thread per processare i chunk in parallelo (default 4) | Adatta al numero di core CPU |
+| `--ml-skip-extensions ".log,.txt"` | Estensioni per cui saltare i layer ML (GLiNER/OPF) sopra `--ml-skip-min-chars` | File di log/dump dove i pattern bastano |
+| `--ml-skip-min-chars N` | Soglia in caratteri sopra cui scatta lo skip ML (default 8000) | File piccoli passano comunque per i layer ML |
+
+```bash
+# OCR più veloce su PDF scansionati: 200 DPI + 8 thread per pagine in parallelo
+privacy-anonymizer scansione.pdf --ocr-dpi 200 --ocr-max-workers 8
+
+# Log file lunghi: solo pattern, salta GLiNER/OPF (drasticamente più veloce)
+privacy-anonymizer applicazione.log --ml-skip-extensions ".log,.txt" --ml-skip-min-chars 4000
+
+# Disattiva chunking se vuoi che GLiNER/OPF vedano l'intero testo
+privacy-anonymizer documento.txt --no-chunk-long-text
 ```
 
 ### De-anonimizzazione da vault

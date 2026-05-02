@@ -8,6 +8,7 @@ import re
 logger = logging.getLogger(__name__)
 
 from privacy_anonymizer.errors import MissingOptionalDependencyError
+from privacy_anonymizer.io import _ocr
 from privacy_anonymizer.io.base import FileAdapter, FileContent, WriteResult
 from privacy_anonymizer.masking import ReplacementSpan
 
@@ -89,29 +90,11 @@ def _import_ocr():
 
 
 def _load_rapidocr():
-    try:
-        from rapidocr_onnxruntime import RapidOCR  # type: ignore[import-not-found]
-    except ImportError:
-        try:
-            from rapidocr import RapidOCR  # type: ignore[import-not-found]
-        except ImportError as exc:
-            raise MissingOptionalDependencyError("rapidocr", "documents") from exc
-    # rapidocr/utils/log.py adds a StreamHandler and sets propagate=False at module
-    # import time. Redirect before instantiating so __init__ messages go to root
-    # instead of the console (silent in normal mode, file in --log mode).
-    _redirect_rapidocr_logging()
-    return RapidOCR()
-
-
-def _redirect_rapidocr_logging() -> None:
-    # Remove all handlers (including the NullHandler/FileHandler pre-added by cli.py)
-    # and let messages propagate to root: silent at WARNING level, written to file
-    # at DEBUG level (--log mode). This avoids duplicate log entries.
-    for name in ("RapidOCR", "rapidocr"):
-        logger = logging.getLogger(name)
-        for handler in logger.handlers[:]:
-            logger.removeHandler(handler)
-        logger.propagate = True
+    """Return the shared singleton OCR engine, raising if not installed."""
+    engine = _ocr.get_engine()
+    if engine is None:
+        raise MissingOptionalDependencyError("rapidocr", "documents")
+    return engine
 
 
 def _import_pillow():

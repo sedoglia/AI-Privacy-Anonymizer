@@ -88,10 +88,12 @@ class GlinerDetector:
         model_name: str = "urchade/gliner_multi_pii-v1",
         threshold: float = 0.5,
         labels: list[str] | None = None,
+        device: str = "cpu",
     ) -> None:
         self.model_name = model_name
         self.threshold = threshold
         self.labels = labels or DEFAULT_LABELS
+        self.device = device
         self._model = None
 
     def detect(self, text: str) -> list[DetectionSpan]:
@@ -131,6 +133,14 @@ class GlinerDetector:
             self._unavailable = True
             return None
         _suppress_hf_progress()
-        self._model = GLiNER.from_pretrained(self.model_name)
+        model = GLiNER.from_pretrained(self.model_name)
+        if self.device and self.device != "cpu":
+            try:
+                model = model.to(self.device)
+            except Exception as exc:
+                logging.getLogger(__name__).warning(
+                    "GLiNER: impossibile spostare il modello su %s (%s). Uso CPU.", self.device, exc
+                )
+        self._model = model
         return self._model
 

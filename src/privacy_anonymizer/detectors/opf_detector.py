@@ -55,12 +55,13 @@ class OpfDetector:
 
     source = "opf"
 
-    def __init__(self, recall_mode: str = "balanced") -> None:
+    def __init__(self, recall_mode: str = "balanced", device: str = "cpu") -> None:
         # `recall_mode` previously selected a Viterbi config; the upstream API
         # exposes `decode_mode` ("viterbi" | "argmax") instead. We map any non-
         # default value to argmax (faster, less recall) and the rest to viterbi.
         self.recall_mode = recall_mode
         self._decode_mode = "argmax" if recall_mode == "conservative" else "viterbi"
+        self.device = device
         self._pipeline = None
         self._unavailable_reason: str | None = None
         self._warned = False
@@ -111,7 +112,7 @@ class OpfDetector:
         # Real upstream API (openai/privacy-filter)
         if hasattr(opf, "OPF"):
             try:
-                self._pipeline = opf.OPF(device="cpu", output_mode="typed", decode_mode=self._decode_mode)
+                self._pipeline = opf.OPF(device=self.device, output_mode="typed", decode_mode=self._decode_mode)
             except Exception as exc:
                 self._unavailable_reason = f"Inizializzazione OPF fallita: {exc}"
                 self._warn_once()

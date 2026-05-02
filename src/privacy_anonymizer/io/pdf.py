@@ -4,10 +4,13 @@ import re
 from pathlib import Path
 
 from privacy_anonymizer.errors import MissingOptionalDependencyError
+from privacy_anonymizer.io import _ocr
 from privacy_anonymizer.io.base import FileAdapter, FileContent, WriteResult
 from privacy_anonymizer.masking import ReplacementSpan
 
 
+# Default fallback when no Anonymizer has called _ocr.configure() yet (e.g.
+# adapters used directly in tests). Runtime DPI is read from _ocr.get_settings().
 OCR_RENDER_DPI = 300
 
 
@@ -175,130 +178,147 @@ def _try_rapidocr_pdf(path: Path, warnings: list[str]) -> tuple[str, list[list[d
         warnings.append(f"OCR PDF non disponibile: dipendenza mancante ({exc}).")
         return "", None
 
-    engine = _load_rapidocr(warnings)
+    engine = _ocr.get_engine(warnings)
     if engine is None:
         return "", None
 
-    import io as _io
-    import numpy as np  # type: ignore[import-not-found]
-
+    settings = _ocr.get_settings()
+    dpi = settings.dpi or OCR_RENDER_DPI
     document = fitz.open(path)
-    pages_text: list[str] = []
-    pages_words: list[list[dict]] = []
-    # Running char offset in the full OCR text (mirrors "\n\n".join(pages_text)).
-    # Each word dict stores char_start/char_end so redaction can use position-based
-    # matching instead of re-matching by text content (which fails on OCR variants).
-    global_char_offset = 0
+    page_count = document.page_count
+
+    def _ocr_page(page_idx: int):
+        # PyMuPDF page handles aren't safely shared across threads; reopen
+        # the page from the same document object via index — get_pixmap is
+        # what dominates the time and is safe to call serially per page.
+        page = document.load_page(page_idx)
+        pix = page.get_pixmap(dpi=dpi, alpha=False)
+        png_bytes = pix.tobytes("png")
+        pix_width, pix_height = pix.width, pix.height
+        # Image decode + OCR can run off the main thread.
+        return _decode_and_ocr(png_bytes, pix_width, pix_height, engine, warnings, page_idx)
+
+    pages_results: list[tuple[list[str], list[dict], int, int]] = []
     try:
-        for page_idx, page in enumerate(document):
-            pix = page.get_pixmap(dpi=OCR_RENDER_DPI, alpha=False)
-            image = Image.open(_io.BytesIO(pix.tobytes("png"))).convert("RGB")
-            try:
-                rows = _normalize_rapidocr_result(engine(np.array(image)))
-            except Exception as exc:  # pragma: no cover - defensive
-                warnings.append(f"RapidOCR pagina fallita: {exc}")
-                pages_words.append([])
-                pages_text.append("")
-                continue
-            if not rows:
-                pages_words.append([])
-                pages_text.append("")
-                continue
+        if settings.parallel_pages and page_count > 1:
+            from concurrent.futures import ThreadPoolExecutor
 
-            # Filter to non-empty lines — same predicate used when building page text.
-            valid_rows = [(box, txt, score) for box, txt, score in rows if txt]
-            if not valid_rows:
-                pages_words.append([])
-                pages_text.append("")
-                continue
-
-            # "\n\n" separator between pages (mirrors "\n\n".join(...))
-            if page_idx > 0:
-                global_char_offset += 2
-
-            line_offset = global_char_offset
-            page_line_texts: list[str] = []
-            page_words: list[dict] = []
-
-            for line_idx, (box, line_text, _score) in enumerate(valid_rows):
-                # "\n" separator between lines (mirrors "\n".join(...))
-                if line_idx > 0:
-                    line_offset += 1
-
-                xs = [p[0] for p in box]
-                ys = [p[1] for p in box]
-                line_left, line_right = min(xs), max(xs)
-                line_top, line_bottom = min(ys), max(ys)
-                line_width = line_right - line_left
-                line_height = line_bottom - line_top
-
-                tokens = line_text.split()
-                page_line_texts.append(line_text)
-                if not tokens:
-                    line_offset += len(line_text)
-                    continue
-
-                total_chars = sum(len(t) for t in tokens) + max(len(tokens) - 1, 0)
-                cursor_x = line_left
-                search_from = 0
-
-                for tok_idx, token in enumerate(tokens):
-                    token_width_chars = len(token) + (1 if tok_idx < len(tokens) - 1 else 0)
-                    token_px_width = line_width * (token_width_chars / total_chars) if total_chars else 0
-
-                    # Find exact position of this token in the original line text
-                    # (handles multiple spaces / unusual OCR whitespace).
-                    tok_pos = line_text.find(token, search_from)
-                    if tok_pos < 0:
-                        tok_pos = search_from
-
-                    page_words.append({
-                        "text": token,
-                        "left": cursor_x,
-                        "top": line_top,
-                        "width": token_px_width,
-                        "height": line_height,
-                        "char_start": line_offset + tok_pos,
-                        "char_end": line_offset + tok_pos + len(token),
-                    })
-                    cursor_x += token_px_width
-                    search_from = tok_pos + len(token)
-
-                line_offset += len(line_text)
-
-            page_text = "\n".join(page_line_texts)
-            global_char_offset = line_offset  # = global_char_offset_at_page_start + len(page_text)
-
-            pages_text.append(page_text)
-            pages_words.append(
-                [{"_pix_width": pix.width, "_pix_height": pix.height, **w} for w in page_words]
-                if page_words else []
-            )
+            workers = max(1, min(settings.max_workers, page_count))
+            with ThreadPoolExecutor(max_workers=workers) as executor:
+                pages_results = list(executor.map(_ocr_page, range(page_count)))
+        else:
+            pages_results = [_ocr_page(i) for i in range(page_count)]
     finally:
         document.close()
+
+    pages_text: list[str] = []
+    pages_words: list[list[dict]] = []
+    global_char_offset = 0
+    for page_idx, (page_line_texts, page_words, pix_width, pix_height) in enumerate(pages_results):
+        if page_idx > 0:
+            global_char_offset += 2  # "\n\n" page separator
+
+        if not page_line_texts:
+            pages_text.append("")
+            pages_words.append([])
+            continue
+
+        # Re-anchor per-token char offsets to the global text now that we know
+        # this page's starting offset. Each word's char_start/char_end was
+        # produced relative to the page (page-local offset).
+        anchored = [
+            {**w, "char_start": w["char_start"] + global_char_offset, "char_end": w["char_end"] + global_char_offset}
+            for w in page_words
+        ]
+        page_text = "\n".join(page_line_texts)
+        global_char_offset += len(page_text)
+
+        pages_text.append(page_text)
+        pages_words.append(
+            [{"_pix_width": pix_width, "_pix_height": pix_height, **w} for w in anchored]
+            if anchored else []
+        )
+
     text = "\n\n".join(pages_text)
     if text.strip():
         warnings.append("PDF scansionato letto con RapidOCR.")
     return text, pages_words if text.strip() else None
 
 
+def _decode_and_ocr(png_bytes: bytes, pix_width: int, pix_height: int, engine, warnings: list[str], page_idx: int):
+    """Decode a rendered page PNG and run OCR. Returns (line_texts, words, w, h).
+
+    Word offsets are page-local (0 at start of page text); the caller anchors
+    them to the global text once page order is established.
+    """
+    import io as _io
+    import numpy as np  # type: ignore[import-not-found]
+
+    Image = _import_pillow()
+    image = Image.open(_io.BytesIO(png_bytes)).convert("RGB")
+    try:
+        rows = _normalize_rapidocr_result(engine(np.array(image)))
+    except Exception as exc:  # pragma: no cover - defensive
+        warnings.append(f"RapidOCR pagina {page_idx} fallita: {exc}")
+        return [], [], pix_width, pix_height
+
+    valid_rows = [(box, txt, score) for box, txt, score in rows if txt]
+    if not valid_rows:
+        return [], [], pix_width, pix_height
+
+    page_line_texts: list[str] = []
+    page_words: list[dict] = []
+    line_offset = 0
+
+    for line_idx, (box, line_text, _score) in enumerate(valid_rows):
+        if line_idx > 0:
+            line_offset += 1  # "\n" between lines
+
+        xs = [p[0] for p in box]
+        ys = [p[1] for p in box]
+        line_left, line_right = min(xs), max(xs)
+        line_top, line_bottom = min(ys), max(ys)
+        line_width = line_right - line_left
+        line_height = line_bottom - line_top
+
+        tokens = line_text.split()
+        page_line_texts.append(line_text)
+        if not tokens:
+            line_offset += len(line_text)
+            continue
+
+        total_chars = sum(len(t) for t in tokens) + max(len(tokens) - 1, 0)
+        cursor_x = line_left
+        search_from = 0
+
+        for tok_idx, token in enumerate(tokens):
+            token_width_chars = len(token) + (1 if tok_idx < len(tokens) - 1 else 0)
+            token_px_width = line_width * (token_width_chars / total_chars) if total_chars else 0
+
+            tok_pos = line_text.find(token, search_from)
+            if tok_pos < 0:
+                tok_pos = search_from
+
+            page_words.append({
+                "text": token,
+                "left": cursor_x,
+                "top": line_top,
+                "width": token_px_width,
+                "height": line_height,
+                "char_start": line_offset + tok_pos,
+                "char_end": line_offset + tok_pos + len(token),
+            })
+            cursor_x += token_px_width
+            search_from = tok_pos + len(token)
+
+        line_offset += len(line_text)
+
+    return page_line_texts, page_words, pix_width, pix_height
+
+
 def _load_rapidocr(warnings: list[str] | None = None):
-    try:
-        from rapidocr_onnxruntime import RapidOCR  # type: ignore[import-not-found]
-        return RapidOCR()
-    except ImportError:
-        pass
-    try:
-        from rapidocr import RapidOCR  # type: ignore[import-not-found]
-        return RapidOCR()
-    except ImportError:
-        if warnings is not None:
-            warnings.append("RapidOCR non installato: nessun fallback OCR disponibile.")
-        return None
-    except Exception as exc:
-        if warnings is not None:
-            warnings.append(f"Inizializzazione RapidOCR fallita: {exc}")
-        return None
+    """Backwards-compatible shim that returns the shared singleton engine."""
+    return _ocr.get_engine(warnings)
 
 
 def _write_coordinate_redacted_pdf(
@@ -360,12 +380,12 @@ def _write_ocr_redacted_pdf(
                 words = [{k: v for k, v in w.items() if not k.startswith("_")} for w in raw_words]
             else:
                 Image = _import_pillow()
-                engine = _load_rapidocr()
+                engine = _ocr.get_engine()
                 if engine is None:
                     break
                 import io as _io
                 import numpy as np  # type: ignore[import-not-found]
-                pix = page.get_pixmap(dpi=OCR_RENDER_DPI, alpha=False)
+                pix = page.get_pixmap(dpi=_ocr.get_settings().dpi or OCR_RENDER_DPI, alpha=False)
                 image = Image.open(_io.BytesIO(pix.tobytes("png"))).convert("RGB")
                 try:
                     rows = _normalize_rapidocr_result(engine(np.array(image)))

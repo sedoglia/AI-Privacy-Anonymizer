@@ -28,7 +28,70 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--recall-mode", choices=["conservative", "balanced", "aggressive"], default="aggressive")
     parser.add_argument("--gliner-model", default="urchade/gliner_multi_pii-v1")
     parser.add_argument("--gliner-threshold", type=float, default=0.3)
-    parser.add_argument("--device", default="cpu", help="Device previsto per i layer ML futuri")
+    parser.add_argument(
+        "--device",
+        default="auto",
+        help="Device per i layer ML: auto (default, usa CUDA/MPS se disponibile), cpu, cuda, mps",
+    )
+    parser.add_argument(
+        "--ocr-dpi",
+        type=int,
+        default=300,
+        help="DPI di rendering per OCR PDF scansionati (default 300; 200 e' ~50%% piu' veloce)",
+    )
+    parser.add_argument(
+        "--ocr-parallel-pages",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Esegue OCR delle pagine PDF in parallelo (default attivo)",
+    )
+    parser.add_argument(
+        "--ocr-max-workers",
+        type=int,
+        default=4,
+        help="Numero massimo di thread per OCR pagine in parallelo (default 4)",
+    )
+    parser.add_argument(
+        "--chunk-long-text",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="Spezza testi lunghi in finestre parallele per i layer ML (default attivo)",
+    )
+    parser.add_argument(
+        "--chunk-threshold",
+        type=int,
+        default=4000,
+        help="Numero minimo di caratteri sopra cui attivare il chunking (default 4000)",
+    )
+    parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=1500,
+        help="Lunghezza in caratteri di ogni finestra di chunking (default 1500)",
+    )
+    parser.add_argument(
+        "--chunk-overlap",
+        type=int,
+        default=100,
+        help="Sovrapposizione fra finestre per evitare entita' tagliate ai bordi (default 100)",
+    )
+    parser.add_argument(
+        "--chunk-max-workers",
+        type=int,
+        default=4,
+        help="Thread massimi per processare i chunk in parallelo (default 4)",
+    )
+    parser.add_argument(
+        "--ml-skip-extensions",
+        default=".log",
+        help="Estensioni (separate da virgola) per cui saltare ML su file lunghi (default '.log'; vuoto per disattivare)",
+    )
+    parser.add_argument(
+        "--ml-skip-min-chars",
+        type=int,
+        default=8000,
+        help="Soglia in caratteri sopra cui i file con estensione ml-skip-extensions usano solo i pattern (default 8000)",
+    )
     parser.add_argument("--keep-metadata", action="store_true", help="Non rimuove i metadati quando il formato lo supporta")
     parser.add_argument("--recursive", action=argparse.BooleanOptionalAction, default=True)
     parser.add_argument("--dry-run", action="store_true", help="Mostra il report senza scrivere output")
@@ -118,6 +181,11 @@ def main(argv: list[str] | None = None) -> int:
     pattern_enabled = "pattern" not in args.disable_layer
     gliner_enabled = not args.pattern_only and "gliner" not in args.disable_layer
     opf_enabled = not args.pattern_only and "opf" not in args.disable_layer
+    ml_skip_extensions = tuple(
+        ext if ext.startswith(".") else f".{ext}"
+        for ext in (token.strip().lower() for token in (args.ml_skip_extensions or "").split(","))
+        if ext
+    )
     anonymizer = Anonymizer(
         LayerConfig(
             masking_mode=args.mode,
@@ -131,6 +199,16 @@ def main(argv: list[str] | None = None) -> int:
             recursive=args.recursive,
             low_memory=args.low_memory,
             parallel=args.parallel and not args.low_memory,
+            chunk_long_text=args.chunk_long_text,
+            chunk_threshold=args.chunk_threshold,
+            chunk_size=args.chunk_size,
+            chunk_overlap=args.chunk_overlap,
+            chunk_max_workers=args.chunk_max_workers,
+            ocr_dpi=args.ocr_dpi,
+            ocr_parallel_pages=args.ocr_parallel_pages,
+            ocr_max_workers=args.ocr_max_workers,
+            ml_skip_extensions=ml_skip_extensions,
+            ml_skip_min_chars=args.ml_skip_min_chars,
         ),
         device=args.device,
     )
@@ -308,6 +386,8 @@ def _install_full() -> int:
 def _wipe_cache() -> int:
     import shutil
 
+    from privacy_anonymizer.io import _ocr
+
     candidates = [
         Path.home() / ".cache" / "privacy_anonymizer",
         Path.cwd() / ".privacy_anonymizer_cache",
@@ -317,6 +397,7 @@ def _wipe_cache() -> int:
         if path.exists():
             shutil.rmtree(path, ignore_errors=True)
             removed += 1
+    _ocr.reset_engine()
     return removed
 
 

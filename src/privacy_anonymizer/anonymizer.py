@@ -13,6 +13,7 @@ from privacy_anonymizer.config import LayerConfig, MaskingMode
 logger = logging.getLogger(__name__)
 from privacy_anonymizer.detectors import GlinerDetector, ItalianPatternDetector, OpfDetector
 from privacy_anonymizer.io import SUPPORTED_EXTENSIONS, get_adapter
+from privacy_anonymizer.io import _ocr
 from privacy_anonymizer.masking import ReplacementSpan, build_masking_plan, mask_text
 from privacy_anonymizer.models import DetectionSpan
 from privacy_anonymizer.resolver import category_counts, resolve_spans
@@ -93,16 +94,27 @@ class BatchProcessResult:
 
 
 class Anonymizer:
-    def __init__(self, config: LayerConfig | None = None, device: str = "cpu") -> None:
+    def __init__(self, config: LayerConfig | None = None, device: str = "auto") -> None:
         self.config = config or LayerConfig()
-        self.device = device
+        self.device = _resolve_device(device)
+        if device == "auto":
+            logger.info("Device ML auto-detect: %s", self.device)
         self.pattern_detector = ItalianPatternDetector()
         self.gliner_detector = (
-            GlinerDetector(self.config.gliner_model, self.config.gliner_threshold)
+            GlinerDetector(self.config.gliner_model, self.config.gliner_threshold, device=self.device)
             if self.config.gliner_enabled
             else None
         )
-        self.opf_detector = OpfDetector(self.config.opf_recall_mode) if self.config.opf_enabled else None
+        self.opf_detector = (
+            OpfDetector(self.config.opf_recall_mode, device=self.device)
+            if self.config.opf_enabled
+            else None
+        )
+        _ocr.configure(
+            dpi=self.config.ocr_dpi,
+            parallel_pages=self.config.ocr_parallel_pages,
+            max_workers=self.config.ocr_max_workers,
+        )
         logger.info("Layer attivi: %s", ", ".join(self._layers_used()) or "nessuno")
 
     def process_text(self, text: str, language: str = "it") -> tuple[str, dict[str, int]]:
@@ -141,7 +153,16 @@ class Anonymizer:
         started = time.perf_counter()
         content = adapter.read_text(source)
         logger.info("Testo estratto: %d caratteri da %s", len(content.text), source.name)
-        spans = self.detect_text(content.text)
+        skip_ml = self._should_skip_ml(source, content.text)
+        if skip_ml:
+            logger.info(
+                "ML skip: %s (estensione %s, %d caratteri >= %d) — solo layer pattern.",
+                source.name,
+                source.suffix.lower(),
+                len(content.text),
+                self.config.ml_skip_min_chars,
+            )
+        spans = self.detect_text(content.text, skip_ml=skip_ml)
         logger.info("Rilevati %d span PII in %s", len(spans), source.name)
         plan = build_masking_plan(content.text, spans, self.config.masking_mode)
         destination = Path(output_path) if output_path else self._output_path(source, output_dir, adapter.output_suffix(source))
@@ -226,13 +247,16 @@ class Anonymizer:
 
         return BatchProcessResult(results=results, skipped=skipped)
 
-    def detect_text(self, text: str, language: str = "it") -> list[DetectionSpan]:
+    def detect_text(
+        self, text: str, language: str = "it", skip_ml: bool = False
+    ) -> list[DetectionSpan]:
         del language
+        ml_active = not skip_ml
         tasks: list[tuple[str, callable]] = []
-        if self.config.opf_enabled and self.opf_detector is not None:
-            tasks.append(("opf", lambda: self.opf_detector.detect(text)))
-        if self.config.gliner_enabled and self.gliner_detector is not None:
-            tasks.append(("gliner", lambda: self.gliner_detector.detect(text)))
+        if ml_active and self.config.opf_enabled and self.opf_detector is not None:
+            tasks.append(("opf", lambda: self._chunked_detect(self.opf_detector, text)))
+        if ml_active and self.config.gliner_enabled and self.gliner_detector is not None:
+            tasks.append(("gliner", lambda: self._chunked_detect(self.gliner_detector, text)))
         if self.config.pattern_enabled:
             tasks.append(("pattern", lambda: self.pattern_detector.detect(text)))
 
@@ -257,6 +281,70 @@ class Anonymizer:
         resolved = resolve_spans(spans)
         resolved = _filter_false_positive_personas(text, resolved)
         return _expand_all_occurrences(text, resolved)
+
+    def _chunked_detect(self, detector, text: str) -> list[DetectionSpan]:
+        """Run a detector on text, splitting long inputs into overlapping chunks.
+
+        For texts shorter than `chunk_threshold` the detector runs once on the
+        full text. Otherwise the text is split into overlapping windows and
+        chunks are processed in parallel; spans are remapped to absolute offsets
+        and overlapping duplicates near boundaries are deduplicated downstream
+        by `resolve_spans`.
+        """
+        if (
+            not self.config.chunk_long_text
+            or len(text) <= self.config.chunk_threshold
+            or self.config.chunk_size <= 0
+        ):
+            return detector.detect(text)
+
+        windows = _build_chunks(
+            text,
+            chunk_size=self.config.chunk_size,
+            overlap=max(0, self.config.chunk_overlap),
+        )
+        if len(windows) <= 1:
+            return detector.detect(text)
+
+        logger.info(
+            "Chunking %s: %d finestre (size=%d, overlap=%d, max_workers=%d)",
+            getattr(detector, "source", "detector"),
+            len(windows),
+            self.config.chunk_size,
+            self.config.chunk_overlap,
+            self.config.chunk_max_workers,
+        )
+
+        from concurrent.futures import ThreadPoolExecutor
+
+        def _run(window: tuple[int, int]) -> list[DetectionSpan]:
+            start, end = window
+            sub_spans = detector.detect(text[start:end])
+            return [
+                DetectionSpan(
+                    start=span.start + start,
+                    end=span.end + start,
+                    label=span.label,
+                    source=span.source,
+                    score=span.score,
+                )
+                for span in sub_spans
+            ]
+
+        workers = max(1, min(self.config.chunk_max_workers, len(windows)))
+        results: list[DetectionSpan] = []
+        with ThreadPoolExecutor(max_workers=workers) as executor:
+            for partial in executor.map(_run, windows):
+                results.extend(partial)
+        return results
+
+    def _should_skip_ml(self, source: Path, text: str) -> bool:
+        extensions = {ext.lower() for ext in (self.config.ml_skip_extensions or ())}
+        if not extensions:
+            return False
+        if source.suffix.lower() not in extensions:
+            return False
+        return len(text) >= self.config.ml_skip_min_chars
 
 
 
@@ -304,6 +392,56 @@ class Anonymizer:
         if self.config.pattern_enabled:
             layers.append("pattern")
         return layers
+
+
+def _resolve_device(requested: str) -> str:
+    """Resolve a requested device string to an actual device name.
+
+    "auto" probes for CUDA via torch and falls back to CPU. Any explicit
+    value is returned unchanged so users can force "cpu"/"cuda"/"mps".
+    """
+    if not requested or requested == "auto":
+        try:
+            import torch  # type: ignore[import-not-found]
+
+            if torch.cuda.is_available():
+                return "cuda"
+            if hasattr(torch.backends, "mps") and torch.backends.mps.is_available():
+                return "mps"
+        except Exception:
+            pass
+        return "cpu"
+    return requested
+
+
+def _build_chunks(text: str, chunk_size: int, overlap: int) -> list[tuple[int, int]]:
+    """Split text into overlapping windows aligned to whitespace where possible.
+
+    Returns a list of (start, end) absolute offsets covering the full text.
+    Boundaries are nudged backward to the nearest whitespace inside the last
+    20% of the window to avoid cutting words/entities. Overlap helps span
+    detection across boundaries; duplicate spans are deduplicated by the
+    span resolver downstream.
+    """
+    n = len(text)
+    if chunk_size <= 0 or n <= chunk_size:
+        return [(0, n)]
+    overlap = max(0, min(overlap, chunk_size // 2))
+    windows: list[tuple[int, int]] = []
+    start = 0
+    while start < n:
+        end = min(start + chunk_size, n)
+        if end < n:
+            soft_floor = end - max(1, chunk_size // 5)
+            for cursor in range(end, soft_floor, -1):
+                if text[cursor - 1] in (" ", "\n", "\t", "\r"):
+                    end = cursor
+                    break
+        windows.append((start, end))
+        if end >= n:
+            break
+        start = max(end - overlap, start + 1)
+    return windows
 
 
 def _filter_false_positive_personas(text: str, spans: list[DetectionSpan]) -> list[DetectionSpan]:
