@@ -34,10 +34,6 @@ documents = [
   "extract-msg>=0.48",
   "xlrd>=2.0",
 ]
-docling = [
-  "docling>=2.0",
-  "docling-core>=2.0",
-]
 webui = [
   "gradio>=4.0",
 ]
@@ -59,8 +55,6 @@ recommended = [
   "striprtf>=0.0.26",
   "extract-msg>=0.48",
   "xlrd>=2.0",
-  "docling>=2.0",
-  "docling-core>=2.0",
   "gradio>=4.0",
   "fastapi>=0.110",
   "uvicorn>=0.27",

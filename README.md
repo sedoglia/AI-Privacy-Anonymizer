@@ -161,16 +161,6 @@ L'insieme completo delle categorie emesse verso il masking engine, dopo normaliz
 | Word legacy | `.doc` | best-effort binary (suggerito LibreOffice) |
 | Excel legacy | `.xls` | `xlrd` (extra `documents`) |
 
-### Parser Docling (opzionale)
-
-Attivabile con `--parser docling`. Docling (IBM, MIT license) aggiunge:
-- Parsing avanzato layout PDF con modello AI DocLayNet
-- OCR integrato per PDF scansionati e immagini
-- Riconoscimento tabelle con TableFormer
-- Support multi-formato unificato (PDF, DOCX, XLSX, PPTX, HTML, immagini)
-
-Richiede extra `[docling]` (`pip install -e .[docling]`). I modelli vengono scaricati automaticamente al primo utilizzo.
-
 ---
 
 ## Modalità di mascheratura
@@ -212,12 +202,6 @@ pip install "ai-privacy-anonymizer[documents]"
 pip install "ai-privacy-anonymizer[ml]"
 ```
 
-### Con parser Docling
-
-```bash
-pip install "ai-privacy-anonymizer[docling]"
-```
-
 ### Con Web UI Gradio
 
 ```bash
@@ -236,7 +220,7 @@ pip install "ai-privacy-anonymizer[api]"
 pip install "ai-privacy-anonymizer[recommended]"
 ```
 
-Installa office, documents, ml (GLiNER), docling, webui, api, rich. **Esclude OPF** (Layer 1) per evitare il download di ~3 GB a chi non lo serve. È la scelta consigliata per la maggior parte degli utenti.
+Installa office, documents, ml (GLiNER), webui, api, rich. **Esclude OPF** (Layer 1) per evitare il download di ~3 GB a chi non lo serve. È la scelta consigliata per la maggior parte degli utenti.
 
 ### Setup completo con OPF (extra `[full]`)
 
@@ -366,12 +350,6 @@ privacy-anonymizer file.txt --gliner-threshold 0.5
 privacy-anonymizer file.txt --gliner-model urchade/gliner_multi_pii-v1
 ```
 
-### Parser Docling
-
-```bash
-privacy-anonymizer documento.pdf --parser docling
-```
-
 ### Dry-run (analisi senza scrivere output)
 
 ```bash
@@ -478,7 +456,6 @@ from privacy_anonymizer import Anonymizer, LayerConfig
 
 # Configurazione personalizzata
 config = LayerConfig(
-    parser="built-in",             # "built-in" | "docling"
     opf_enabled=False,             # richiede installazione OPF esterna
     opf_recall_mode="balanced",    # "conservative" | "balanced" | "aggressive"
     gliner_enabled=True,           # richiede extra [ml]
@@ -892,8 +869,7 @@ src/privacy_anonymizer/
     ├── images.py            # .png .jpg .jpeg .tiff .bmp (Pillow + RapidOCR)
     ├── email_files.py       # .eml .msg
     ├── legacy.py            # .doc .xls .rtf
-    ├── xml_files.py         # .xml (FatturaPA)
-    └── docling_parser.py    # Parser Docling opzionale
+    └── xml_files.py         # .xml (FatturaPA)
 
 tests/
 ├── test_anonymizer.py          # Test Anonymizer end-to-end
@@ -903,7 +879,6 @@ tests/
 ├── test_document_adapters.py   # Test PDF/immagini/EML/legacy
 ├── test_gliner_detector.py     # Test GlinerDetector (mock)
 ├── test_opf_detector.py        # Test OpfDetector (mock)
-├── test_docling_parser.py      # Test DoclingTextExtractor (mock)
 ├── test_image_redaction.py     # Test redazione coordinate immagini (mock)
 └── test_completion_features.py # Test CLI + evaluation + compliance + MCP
 ```

@@ -10,7 +10,6 @@ from pathlib import Path
 from privacy_anonymizer.config import LayerConfig, MaskingMode
 from privacy_anonymizer.detectors import GlinerDetector, ItalianPatternDetector, OpfDetector
 from privacy_anonymizer.io import SUPPORTED_EXTENSIONS, get_adapter
-from privacy_anonymizer.io.docling_parser import DoclingTextExtractor
 from privacy_anonymizer.masking import ReplacementSpan, build_masking_plan, mask_text
 from privacy_anonymizer.models import DetectionSpan
 from privacy_anonymizer.resolver import category_counts, resolve_spans
@@ -95,7 +94,6 @@ class Anonymizer:
         self.config = config or LayerConfig()
         self.device = device
         self.pattern_detector = ItalianPatternDetector()
-        self.docling_extractor = DoclingTextExtractor() if self.config.parser == "docling" else None
         self.gliner_detector = (
             GlinerDetector(self.config.gliner_model, self.config.gliner_threshold)
             if self.config.gliner_enabled
@@ -136,7 +134,7 @@ class Anonymizer:
         adapter = get_adapter(source)
 
         started = time.perf_counter()
-        content = self.docling_extractor.read_text(source) if self.docling_extractor else adapter.read_text(source)
+        content = adapter.read_text(source)
         spans = self.detect_text(content.text)
         plan = build_masking_plan(content.text, spans, self.config.masking_mode)
         destination = Path(output_path) if output_path else self._output_path(source, output_dir, adapter.output_suffix(source))

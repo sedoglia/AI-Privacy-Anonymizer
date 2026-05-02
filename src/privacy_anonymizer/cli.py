@@ -21,7 +21,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--mode", choices=[mode.value for mode in MaskingMode], default=MaskingMode.REPLACE.value)
     parser.add_argument("--disable-layer", action="append", choices=["opf", "gliner", "pattern"], default=[])
     parser.add_argument("--pattern-only", action="store_true", help="Usa solo il layer pattern, disabilitando GLiNER e OPF")
-    parser.add_argument("--parser", choices=["built-in", "docling"], default="built-in")
+
     parser.add_argument("--recall-mode", choices=["conservative", "balanced", "aggressive"], default="aggressive")
     parser.add_argument("--gliner-model", default="urchade/gliner_multi_pii-v1")
     parser.add_argument("--gliner-threshold", type=float, default=0.3)
@@ -47,7 +47,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--install-full",
         action="store_true",
-        help="Installa tutti gli extra (office, documents, ml, docling, webui, api) e OPF in un unico passaggio",
+        help="Installa tutti gli extra (office, documents, ml, webui, api) e OPF in un unico passaggio",
     )
     return parser
 
@@ -102,7 +102,6 @@ def main(argv: list[str] | None = None) -> int:
     opf_enabled = not args.pattern_only and "opf" not in args.disable_layer
     anonymizer = Anonymizer(
         LayerConfig(
-            parser=args.parser,
             masking_mode=args.mode,
             opf_enabled=opf_enabled,
             opf_recall_mode=args.recall_mode,
@@ -207,7 +206,6 @@ def _print_setup_status(download_models: bool = False) -> None:
     _print_dependency_status("Image/OCR engine", "rapidocr", "documents")
     _print_dependency_status("MSG", "extract_msg", "documents")
     _print_dependency_status("XLS legacy", "xlrd", "documents")
-    _print_dependency_status("Docling parser", "docling", "docling")
     _print_dependency_status("GLiNER", "gliner", "ml")
     _print_dependency_status("OPF", "opf", "external")
     _print_dependency_status("Gradio Web UI", "gradio", "webui")
@@ -268,7 +266,7 @@ def _install_full() -> int:
     import subprocess
 
     print("Installazione completa: tutti gli extra + OPF.")
-    print("Questo richiederà alcuni GB di download (OPF ~3GB, GLiNER ~300MB, Docling ~500MB).")
+    print("Questo richiederà alcuni GB di download (OPF ~3GB, GLiNER ~300MB).")
     extras_cmd = [sys.executable, "-m", "pip", "install", "ai-privacy-anonymizer[recommended]"]
     opf_cmd = [sys.executable, "-m", "pip", "install", "git+https://github.com/openai/privacy-filter"]
     print(f"  → {' '.join(extras_cmd)}")

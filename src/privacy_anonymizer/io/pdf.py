@@ -158,44 +158,13 @@ def _import_pillow():
 
 
 def _ocr_pdf_text(path: Path) -> tuple[str, list[list[dict]] | None, list[str]]:
-    """Read text from a scanned PDF via RapidOCR (preferred) with Docling as last resort.
+    """Read text from a scanned PDF via RapidOCR.
 
     Returns (text, per_page_word_boxes_or_None, warnings).
     """
     warnings: list[str] = []
-
     text, words = _try_rapidocr_pdf(path, warnings)
-    if text and text.strip():
-        return text, words, warnings
-
-    text = _try_docling_extract(path, warnings)
-    return text, None, warnings
-
-
-def _try_docling_extract(path: Path, warnings: list[str]) -> str:
-    try:
-        from docling.document_converter import DocumentConverter
-    except ImportError:
-        return ""
-    try:
-        converter = DocumentConverter()
-        result = converter.convert(str(path))
-        document = result.document
-        if hasattr(document, "export_to_text"):
-            text = document.export_to_text()
-        elif hasattr(document, "export_to_markdown"):
-            text = document.export_to_markdown()
-        else:
-            text = str(document)
-        if text and text.strip():
-            warnings.append(
-                "PDF letto con Docling come ultimo fallback: i confini di parola "
-                "potrebbero essere imperfetti per scansioni complesse."
-            )
-        return text or ""
-    except Exception as exc:
-        warnings.append(f"Docling fallback fallito: {exc}")
-        return ""
+    return text, words, warnings
 
 
 def _try_rapidocr_pdf(path: Path, warnings: list[str]) -> tuple[str, list[list[dict]] | None]:

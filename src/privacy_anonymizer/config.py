@@ -13,7 +13,6 @@ class MaskingMode(StrEnum):
 
 @dataclass(slots=True)
 class LayerConfig:
-    parser: str = "built-in"
     opf_enabled: bool = True
     opf_recall_mode: str = "aggressive"
     gliner_enabled: bool = True
