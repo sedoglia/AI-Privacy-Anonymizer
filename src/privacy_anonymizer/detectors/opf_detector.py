@@ -7,6 +7,9 @@ import warnings
 # Mirror the same suppression applied in gliner_detector so that whichever
 # detector is imported first establishes the filters for the whole process.
 os.environ.setdefault("HF_HUB_DISABLE_PROGRESS_BARS", "1")
+# OPF MoE kernels require `triton`, unavailable on Windows. Disable the
+# Triton-backed path so OPF loads on CPU without error on any platform.
+os.environ.setdefault("OPF_MOE_TRITON", "0")
 logging.getLogger("transformers.tokenization_utils_base").setLevel(logging.ERROR)
 warnings.filterwarnings("ignore", message=".*resume_download.*", category=FutureWarning)
 
@@ -114,9 +117,21 @@ class OpfDetector:
             try:
                 self._pipeline = opf.OPF(device=self.device, output_mode="typed", decode_mode=self._decode_mode)
             except Exception as exc:
-                self._unavailable_reason = f"Inizializzazione OPF fallita: {exc}"
-                self._warn_once()
-                return None
+                if self.device != "cpu":
+                    _log = logging.getLogger(__name__)
+                    _log.warning(
+                        "OPF: inizializzazione su %s fallita (%s) — fallback a CPU.", self.device, exc
+                    )
+                    try:
+                        self._pipeline = opf.OPF(device="cpu", output_mode="typed", decode_mode=self._decode_mode)
+                    except Exception as exc2:
+                        self._unavailable_reason = f"Inizializzazione OPF fallita anche su CPU: {exc2}"
+                        self._warn_once()
+                        return None
+                else:
+                    self._unavailable_reason = f"Inizializzazione OPF fallita: {exc}"
+                    self._warn_once()
+                    return None
             return self._pipeline
 
         # Legacy / hypothetical alternative APIs kept for backward compatibility
