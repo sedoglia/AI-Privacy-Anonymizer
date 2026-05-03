@@ -28,9 +28,9 @@ MATRICOLA_INPS_PATTERN = re.compile(
 DOCUMENTO_ID_PATTERN = re.compile(r"\bID-[A-Z0-9]{6,12}\b", re.I)
 INDIRIZZO_IT_PATTERN = re.compile(
     r"\b(?:via|viale|piazza|piazzale|corso|largo|vicolo|lungarno|borgo|contrada|strada)"
-    r"(?:\s+[\w'.]+)+"
-    r"\s+\d+"
-    r"(?:\s+(?:int\.?\s*[\w/]+|scala\s+\w+|piano\s+\d+))?",
+    r"(?:[ \t]+[\w'.]+)+"
+    r"[ \t]+\d+"
+    r"(?:[ \t]+(?:int\.?[ \t]*[\w/]+|scala[ \t]+\w+|piano[ \t]+\d+))?",
     re.I,
 )
 
