@@ -165,7 +165,7 @@ L'insieme completo delle categorie emesse verso il masking engine, dopo normaliz
 | Word | `.docx` | `python-docx` | `python-docx` | Paragrafi + intestazioni + piè di pagina + tabelle + commenti |
 | Excel | `.xlsx` | `openpyxl` | `openpyxl` | Celle (stringhe) + nomi foglio + commenti autore |
 | PowerPoint | `.pptx` | `python-pptx` | `python-pptx` | Testo shape + note relatore |
-| PDF selezionabile | `.pdf` | `pypdf` | PyMuPDF overlay | Redazione a coordinate sui bounding box originali |
+| PDF (selezionabile o immagine) | `.pdf` | `pypdf` + RapidOCR (ONNX) | PyMuPDF overlay / redazione OCR | Se il testo selezionabile è ≥ 50 caratteri: redazione a coordinate. Sotto soglia (es. solo "Pagina 1 di 1"): OCR automatico come per PDF scansionati |
 | Immagini | `.png` `.jpg` `.jpeg` `.tiff` `.bmp` | RapidOCR (ONNX) | Pillow | Redazione a coordinate OCR; fallback a immagine testo plano |
 | Email | `.eml` | stdlib `email` | stdlib `email` | From/To/Cc/Subject + body |
 | XML/FatturaPA | `.xml` | `xml.etree` | `xml.etree` | Testo e attributi; struttura XML preservata |

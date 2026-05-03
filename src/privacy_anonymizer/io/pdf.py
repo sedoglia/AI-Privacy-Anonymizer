@@ -13,6 +13,11 @@ from privacy_anonymizer.masking import ReplacementSpan
 # adapters used directly in tests). Runtime DPI is read from _ocr.get_settings().
 OCR_RENDER_DPI = 300
 
+# PDFs with less than this many stripped characters of selectable text are treated
+# as image-only and sent through OCR. Prevents "Pagina 1 di 1"-style footer text
+# from masking a fully image-rendered invoice or scan.
+_MIN_MEANINGFUL_TEXT = 50
+
 
 class PdfAdapter(FileAdapter):
     extensions = {".pdf"}
@@ -22,15 +27,17 @@ class PdfAdapter(FileAdapter):
         reader = PdfReader(str(path))
         pages = [page.extract_text() or "" for page in reader.pages]
         warnings: list[str] = []
-        if not any(page.strip() for page in pages):
+        total_text_len = sum(len(p.strip()) for p in pages)
+        if total_text_len < _MIN_MEANINGFUL_TEXT:
             ocr_text, ocr_words, ocr_warnings = _ocr_pdf_text(path)
             warnings.extend(ocr_warnings)
             if ocr_text.strip():
                 return FileContent(ocr_text, warnings=warnings, ocr_words=ocr_words)
-            warnings.append(
-                "PDF senza testo selezionabile e OCR non disponibile/efficace: "
-                "installa l'extra [documents] o [recommended] per abilitare RapidOCR."
-            )
+            if total_text_len == 0:
+                warnings.append(
+                    "PDF senza testo selezionabile e OCR non disponibile/efficace: "
+                    "installa l'extra [documents] o [recommended] per abilitare RapidOCR."
+                )
         return FileContent("\n\n".join(pages), warnings=warnings)
 
     def write_anonymized(
@@ -104,13 +111,10 @@ def _pdf_is_scanned(path: Path) -> bool:
         return False
     try:
         reader = PdfReader(str(path))
-        for page in reader.pages:
-            text = page.extract_text() or ""
-            if text.strip():
-                return False
+        total_text_len = sum(len((page.extract_text() or "").strip()) for page in reader.pages)
+        return total_text_len < _MIN_MEANINGFUL_TEXT
     except Exception:
         return False
-    return True
 
 
 def _passthrough_pdf(
