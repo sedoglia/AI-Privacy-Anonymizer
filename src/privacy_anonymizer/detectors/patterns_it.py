@@ -25,6 +25,7 @@ MATRICOLA_INPS_PATTERN = re.compile(
     r"\b(?:matricola(?:\s+inps)?|inps)\s*[:#]?\s*([0-9]{8,9})\b",
     re.I,
 )
+DOCUMENTO_ID_PATTERN = re.compile(r"\bID-[A-Z0-9]{6,12}\b", re.I)
 
 
 CF_ODD = {
@@ -74,6 +75,7 @@ class ItalianPatternDetector:
         spans.extend(self._detect_ipv4(text))
         spans.extend(self._detect_simple(text, TESSERA_SANITARIA_PATTERN, "TESSERA_SANITARIA"))
         spans.extend(self._detect_matricola_inps(text))
+        spans.extend(self._detect_simple(text, DOCUMENTO_ID_PATTERN, "DOCUMENTO_ID"))
         return sorted(spans, key=lambda span: (span.start, span.end))
 
     def _detect_simple(self, text: str, pattern: re.Pattern[str], label: str) -> Iterable[DetectionSpan]:

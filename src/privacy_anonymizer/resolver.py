@@ -21,11 +21,13 @@ def resolve_spans(spans: list[DetectionSpan], max_gap: int = 3, text: str = "") 
     if not spans:
         return []
 
-    # Filter out spans that cross cell boundaries (contain newlines)
+    # Split spans that cross cell boundaries (newlines) into per-line sub-spans,
+    # so names like "Francesco\nRomano" become two separate PERSONA detections.
     if text:
-        spans = [s for s in spans if "\n" not in text[s.start:s.end]]
-        # Filter out obvious false positives (common Italian column headers, locations, job titles)
-        spans = [s for s in spans if not _is_false_positive(text[s.start:s.end])]
+        expanded: list[DetectionSpan] = []
+        for s in spans:
+            expanded.extend(_split_on_newlines(s, text))
+        spans = [s for s in expanded if not _is_false_positive(text[s.start:s.end])]
 
     ordered = sorted(spans, key=lambda span: (span.start, span.end, -_priority(span)))
     groups: list[list[DetectionSpan]] = []
@@ -83,6 +85,20 @@ def _merge_group(group: list[DetectionSpan]) -> DetectionSpan:
 
 def _priority(span: DetectionSpan) -> int:
     return SOURCE_PRIORITY.get(span.source, 0)
+
+
+def _split_on_newlines(span: DetectionSpan, text: str) -> list[DetectionSpan]:
+    """Split a span that crosses newlines into one sub-span per non-empty line."""
+    span_text = text[span.start:span.end]
+    if "\n" not in span_text:
+        return [span]
+    result = []
+    pos = span.start
+    for line in span_text.split("\n"):
+        if line.strip():
+            result.append(DetectionSpan(pos, pos + len(line), span.label, span.source, span.score))
+        pos += len(line) + 1
+    return result
 
 
 def _is_false_positive(text: str) -> bool:
