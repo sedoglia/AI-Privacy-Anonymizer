@@ -221,5 +221,8 @@ __marimo__/
 *_anonymized.*
 *.audit.json
 
+# Test data folder (contains sample files, not synced)
+TEST/
+
 # Claude Code local session/config
 .claude/

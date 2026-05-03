@@ -17,9 +17,15 @@ LABEL_ALIASES = {
 }
 
 
-def resolve_spans(spans: list[DetectionSpan], max_gap: int = 3) -> list[DetectionSpan]:
+def resolve_spans(spans: list[DetectionSpan], max_gap: int = 3, text: str = "") -> list[DetectionSpan]:
     if not spans:
         return []
+
+    # Filter out spans that cross cell boundaries (contain newlines)
+    if text:
+        spans = [s for s in spans if "\n" not in text[s.start:s.end]]
+        # Filter out obvious false positives (common Italian column headers, locations, job titles)
+        spans = [s for s in spans if not _is_false_positive(text[s.start:s.end])]
 
     ordered = sorted(spans, key=lambda span: (span.start, span.end, -_priority(span)))
     groups: list[list[DetectionSpan]] = []
@@ -28,8 +34,14 @@ def resolve_spans(spans: list[DetectionSpan], max_gap: int = 3) -> list[Detectio
 
     for span in ordered[1:]:
         if span.start <= current_end + max_gap and _compatible(current, span):
-            current.append(span)
-            current_end = max(current_end, span.end)
+            gap_text = text[current_end:span.start] if text else ""
+            if "\n" not in gap_text:
+                current.append(span)
+                current_end = max(current_end, span.end)
+            else:
+                groups.append(current)
+                current = [span]
+                current_end = span.end
         else:
             groups.append(current)
             current = [span]
@@ -71,4 +83,22 @@ def _merge_group(group: list[DetectionSpan]) -> DetectionSpan:
 
 def _priority(span: DetectionSpan) -> int:
     return SOURCE_PRIORITY.get(span.source, 0)
+
+
+def _is_false_positive(text: str) -> bool:
+    # Filter out obvious non-personal data that OPF incorrectly detects as PERSONA
+    # Italian column headers, locations, job titles, etc.
+    false_positives = {
+        # Italian column/header names
+        "Sesso", "Cognome", "Nome", "Ruolo", "Azienda", "Provincia", "Citta", "Stato",
+        "Indirizzo", "CAP", "Data", "Nota", "Note", "Email", "Telefono", "Cellulare",
+        # Common Italian locations
+        "Roma", "Milano", "Napoli", "Torino", "Genova", "Palermo", "Bologna", "Firenze",
+        "Venezia", "Verona", "Messina", "Catania", "Padova", "Trieste", "Brescia",
+        "Parma", "Ravenna", "Perugia", "Modena", "Reggio", "Cagliari", "Lecce",
+        # Common Italian job titles
+        "Analista", "Tecnico", "Manager", "Impiegato", "Operaio", "Consulente",
+        "Specialista", "Coordinatore", "Responsabile", "Direttore", "Supervisore",
+    }
+    return text in false_positives
 

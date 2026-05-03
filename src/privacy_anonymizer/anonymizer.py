@@ -278,7 +278,7 @@ class Anonymizer:
                     self.opf_detector.release()
                 if self.config.low_memory and name == "gliner" and self.gliner_detector is not None:
                     self.gliner_detector.release()
-        resolved = resolve_spans(spans)
+        resolved = resolve_spans(spans, text=text)
         resolved = _filter_false_positive_personas(text, resolved)
         return _expand_all_occurrences(text, resolved)
 
@@ -488,4 +488,4 @@ def _expand_all_occurrences(text: str, spans: list[DetectionSpan]) -> list[Detec
 
     if not extra:
         return spans
-    return resolve_spans(spans + extra)
+    return resolve_spans(spans + extra, text=text)
