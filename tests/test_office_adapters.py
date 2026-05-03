@@ -28,13 +28,13 @@ def test_docx_adapter_masks_body_header_and_metadata(tmp_path: Path) -> None:
     assert output.core_properties.author == "Anonimo"
 
 
-def test_xlsx_adapter_masks_cells_sheet_names_comments_and_metadata(tmp_path: Path) -> None:
+def test_xlsx_adapter_masks_cells_and_comments_preserves_sheet_names(tmp_path: Path) -> None:
     openpyxl = pytest.importorskip("openpyxl")
     Comment = pytest.importorskip("openpyxl.comments").Comment
 
     workbook = openpyxl.Workbook()
     worksheet = workbook.active
-    worksheet.title = "mario.rossi@example.com"
+    worksheet.title = "Anagrafica"
     worksheet["A1"] = "P.IVA 01114601006"
     worksheet["A2"] = "=CONCAT(A1)"
     worksheet["A3"].comment = Comment("tel 3401234567", "Mario Rossi")
@@ -45,7 +45,7 @@ def test_xlsx_adapter_masks_cells_sheet_names_comments_and_metadata(tmp_path: Pa
 
     output = openpyxl.load_workbook(result.output_path, data_only=False)
     worksheet = output.active
-    assert worksheet.title == "_EMAIL_1_"
+    assert worksheet.title == "Anagrafica"
     assert worksheet["A1"].value == "P.IVA [PIVA_1]"
     assert worksheet["A2"].value == "=CONCAT(A1)"
     assert worksheet["A3"].comment.text == "tel [TEL_1]"

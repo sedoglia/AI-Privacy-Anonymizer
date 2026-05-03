@@ -64,8 +64,6 @@ class XlsxAdapter(FileAdapter):
         workbook = openpyxl.load_workbook(path, data_only=False)
         values: list[str] = []
         for worksheet in workbook.worksheets:
-            if worksheet.title:
-                values.append(worksheet.title)
             for row in worksheet.iter_rows():
                 for cell in row:
                     if isinstance(cell.value, str):
@@ -90,9 +88,6 @@ class XlsxAdapter(FileAdapter):
         replacements = _line_replacements(anonymized_text)
         index = 0
         for worksheet in workbook.worksheets:
-            if worksheet.title and index < len(replacements):
-                worksheet.title = _safe_xlsx_sheet_title(replacements[index], workbook.sheetnames, worksheet.title)
-                index += 1
             for row in worksheet.iter_rows():
                 for cell in row:
                     if isinstance(cell.value, str) and index < len(replacements):
@@ -236,20 +231,6 @@ def _iter_pptx_shapes(presentation):
 
 def _line_replacements(text: str) -> list[str]:
     return text.splitlines()
-
-
-def _safe_xlsx_sheet_title(candidate: str, existing_titles: list[str], current_title: str) -> str:
-    forbidden = "[]:*?/\\"
-    title = "".join("_" if char in forbidden else char for char in candidate).strip() or "Sheet"
-    title = title[:31]
-    taken = {t for t in existing_titles if t != current_title}
-    if title not in taken:
-        return title
-    base = title[:28]
-    counter = 1
-    while f"{base}_{counter}" in taken:
-        counter += 1
-    return f"{base}_{counter}"[:31]
 
 
 def _import_docx():
