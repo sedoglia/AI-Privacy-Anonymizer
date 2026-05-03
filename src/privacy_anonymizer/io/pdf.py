@@ -15,8 +15,9 @@ OCR_RENDER_DPI = 300
 
 # PDFs with less than this many stripped characters of selectable text are treated
 # as image-only and sent through OCR. Prevents "Pagina 1 di 1"-style footer text
-# from masking a fully image-rendered invoice or scan.
-_MIN_MEANINGFUL_TEXT = 50
+# (13 chars) from masking a fully image-rendered invoice or scan, while keeping
+# real text PDFs (≥20 chars) on the faster coordinate-redaction path.
+_MIN_MEANINGFUL_TEXT = 20
 
 
 class PdfAdapter(FileAdapter):
