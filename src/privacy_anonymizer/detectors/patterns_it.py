@@ -26,6 +26,13 @@ MATRICOLA_INPS_PATTERN = re.compile(
     re.I,
 )
 DOCUMENTO_ID_PATTERN = re.compile(r"\bID-[A-Z0-9]{6,12}\b", re.I)
+INDIRIZZO_IT_PATTERN = re.compile(
+    r"\b(?:via|viale|piazza|piazzale|corso|largo|vicolo|lungarno|borgo|contrada|strada)"
+    r"(?:\s+[\w'.]+)+"
+    r"\s+\d+"
+    r"(?:\s+(?:int\.?\s*[\w/]+|scala\s+\w+|piano\s+\d+))?",
+    re.I,
+)
 
 
 CF_ODD = {
@@ -76,6 +83,7 @@ class ItalianPatternDetector:
         spans.extend(self._detect_simple(text, TESSERA_SANITARIA_PATTERN, "TESSERA_SANITARIA"))
         spans.extend(self._detect_matricola_inps(text))
         spans.extend(self._detect_simple(text, DOCUMENTO_ID_PATTERN, "DOCUMENTO_ID"))
+        spans.extend(self._detect_simple(text, INDIRIZZO_IT_PATTERN, "INDIRIZZO"))
         return sorted(spans, key=lambda span: (span.start, span.end))
 
     def _detect_simple(self, text: str, pattern: re.Pattern[str], label: str) -> Iterable[DetectionSpan]:
