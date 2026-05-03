@@ -132,7 +132,7 @@ Full set of categories emitted to the masking engine after normalization across 
 | `EMAIL` | L3 + OPF | Standard mailboxes |
 | `PEC` | L3 | Italian Certified Email |
 | `TELEFONO` / `CELL_IT` / `TEL_IT` | L3 + OPF | Italian and international numbers |
-| `INDIRIZZO` | OPF + GLiNER | Street addresses |
+| `INDIRIZZO` | L3 + OPF + GLiNER | Street addresses |
 | `DATA_PRIVATA` | OPF + GLiNER | Dates of birth and private dates |
 | `URL` | OPF + GLiNER | URLs with personal path |
 | `ACCOUNT_NUMBER` | OPF | Generic bank account number |

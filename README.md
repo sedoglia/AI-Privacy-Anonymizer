@@ -132,7 +132,7 @@ L'insieme completo delle categorie emesse verso il masking engine, dopo normaliz
 | `EMAIL` | L3 + OPF | Mailbox standard |
 | `PEC` | L3 | Posta Elettronica Certificata |
 | `TELEFONO` / `CELL_IT` / `TEL_IT` | L3 + OPF | Numeri IT e internazionali |
-| `INDIRIZZO` | OPF + GLiNER | Indirizzi stradali |
+| `INDIRIZZO` | L3 + OPF + GLiNER | Indirizzi stradali |
 | `DATA_PRIVATA` | OPF + GLiNER | Date di nascita e date private |
 | `URL` | OPF + GLiNER | URL con path personale |
 | `ACCOUNT_NUMBER` | OPF | Numero conto corrente generico |
