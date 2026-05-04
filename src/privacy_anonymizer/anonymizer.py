@@ -446,13 +446,25 @@ def _build_chunks(text: str, chunk_size: int, overlap: int) -> list[tuple[int, i
 
 _URL_LIKE_RE = re.compile(r"https?://|www\.|[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}", re.I)
 
+# Italian vehicle-type labels that GLiNER sometimes misclassifies as "driver license"
+_PATENTE_VEHICLE_TYPES = frozenset({
+    "autoveicolo", "motoveicolo", "ciclomotore", "rimorchio",
+    "semirimorchio", "autovettura", "motociclo", "quadriciclo",
+    "veicolo", "automezzo",
+})
+
+# Matches strings that look like a person name: 2+ words, only letters/apostrophes/hyphens
+_NAME_LIKE_RE = re.compile(r"^[A-ZÀ-Ÿa-zà-ÿ'-]+(?:\s+[A-ZÀ-Ÿa-zà-ÿ'-]+)+$")
+
 
 def _filter_false_positive_personas(text: str, spans: list[DetectionSpan]) -> list[DetectionSpan]:
-    """Remove spans that ML models misclassify as PII.
+    """Remove or reclassify spans that ML models misidentify.
 
-    - PERSONA containing Arabic digits → institutional code, not a person name.
-    - URL with no URL-like pattern (no protocol, dot-domain, or www) → common word
-      misidentified as a link by GLiNER/OPF.
+    - PERSONA with Arabic digits → institutional code, not a person name.
+    - URL without URL-like pattern → common word misidentified as a link.
+    - PATENTE matching an Italian vehicle-type descriptor → not a license, drop it.
+    - ACCOUNT_NUMBER with only letters/spaces (2+ words) → likely a person name,
+      reclassified to PERSONA (OPF sometimes mislabels names as account numbers).
     """
     result = []
     for span in spans:
@@ -460,6 +472,11 @@ def _filter_false_positive_personas(text: str, spans: list[DetectionSpan]) -> li
         if span.label == "PERSONA" and re.search(r"\d", span_text):
             continue
         if span.label == "URL" and not _URL_LIKE_RE.search(span_text):
+            continue
+        if span.label == "PATENTE" and span_text.lower().strip() in _PATENTE_VEHICLE_TYPES:
+            continue
+        if span.label == "ACCOUNT_NUMBER" and _NAME_LIKE_RE.match(span_text):
+            result.append(DetectionSpan(span.start, span.end, "PERSONA", span.source, span.score))
             continue
         result.append(span)
     return result

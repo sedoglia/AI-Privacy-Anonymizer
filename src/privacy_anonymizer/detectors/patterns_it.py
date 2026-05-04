@@ -16,7 +16,7 @@ TARGA_PATTERN = re.compile(r"\b[A-Z]{2}\s?[0-9]{3}\s?[A-Z]{2}\b", re.I)
 CARTA_IDENTITA_PATTERN = re.compile(r"\b(?:[A-Z]{2}[0-9]{7}|CA[0-9]{7}[A-Z]{2})\b", re.I)
 CELL_IT_PATTERN = re.compile(r"(?<!\d)(?:(?:\+39|0039)[\s.-]?)?3[0-9]{2}[\s.-]?[0-9]{3}[\s.-]?[0-9]{4}(?!\d)")
 TEL_IT_PATTERN = re.compile(
-    r"(?<!\d)(?:(?:\+39|0039)[\s.-]?)?0[0-9]{1,4}[\s.-]?[0-9]{4,8}(?!\d)"
+    r"(?<![A-Za-z0-9])(?:(?:\+39|0039)[\s.-]?)?0[0-9]{1,4}[\s.-]?[0-9]{4,8}(?!\d)"
 )
 EMAIL_PATTERN = re.compile(r"\b[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}\b", re.I)
 IPV4_PATTERN = re.compile(r"\b(?:[0-9]{1,3}\.){3}[0-9]{1,3}\b")
