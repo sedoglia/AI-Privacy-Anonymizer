@@ -702,6 +702,14 @@ Quando due span si sovrappongono esattamente, vince quello con priorità maggior
 
 La normalizzazione delle varianti (case-insensitive, whitespace collassato) garantisce che la stessa entità riceva sempre lo stesso placeholder nel documento. La mappa è mantenuta **solo in RAM** durante l'esecuzione e mai scritta su disco, salvo uso esplicito di `--export-vault`.
 
+### Filtro falsi positivi
+
+Il resolver applica automaticamente tre livelli di protezione contro i falsi positivi dei modelli ML:
+
+- **Punteggiatura strutturale**: i separatori CSV/tabellari (virgola, punto e virgola, tab) vengono rimossi dai bordi degli span OPF/GLiNER prima della fusione, così la virgola tra nome ed e-mail non viene inglobata nel placeholder.
+- **Parole non-PII**: una lista di termini esclusi copre intestazioni di colonne, nomi di città italiane, mansioni lavorative e nomi di prodotti/dispositivi comuni (es. `Mouse`, `Tastiera`, `Laptop`, `Monitor`) che i modelli ML tendono a classificare erroneamente come PERSONA.
+- **URL non validi**: gli span classificati come URL da GLiNER/OPF vengono scartati se il testo non contiene pattern URL reali (`http://`, `www.`, dominio con TLD). Questo evita che parole comuni come `Laptop` vengano mascherate come `[URL_1]`.
+
 ---
 
 ## Gestione metadati

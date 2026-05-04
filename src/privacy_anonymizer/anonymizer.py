@@ -444,15 +444,22 @@ def _build_chunks(text: str, chunk_size: int, overlap: int) -> list[tuple[int, i
     return windows
 
 
-def _filter_false_positive_personas(text: str, spans: list[DetectionSpan]) -> list[DetectionSpan]:
-    """Remove PERSONA spans that are institutional/organizational codes, not person names.
+_URL_LIKE_RE = re.compile(r"https?://|www\.|[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}", re.I)
 
-    Italian person names never contain Arabic digits. Codes like "ASL TO3", "203",
-    "SSD TORINO 3" do contain digits and are therefore not personal data.
+
+def _filter_false_positive_personas(text: str, spans: list[DetectionSpan]) -> list[DetectionSpan]:
+    """Remove spans that ML models misclassify as PII.
+
+    - PERSONA containing Arabic digits → institutional code, not a person name.
+    - URL with no URL-like pattern (no protocol, dot-domain, or www) → common word
+      misidentified as a link by GLiNER/OPF.
     """
     result = []
     for span in spans:
-        if span.label == "PERSONA" and re.search(r"\d", text[span.start : span.end]):
+        span_text = text[span.start : span.end]
+        if span.label == "PERSONA" and re.search(r"\d", span_text):
+            continue
+        if span.label == "URL" and not _URL_LIKE_RE.search(span_text):
             continue
         result.append(span)
     return result

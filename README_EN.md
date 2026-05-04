@@ -700,6 +700,14 @@ When two spans overlap exactly, the one with higher priority wins.
 
 Variant normalization (case-insensitive, collapsed whitespace) ensures the same entity always gets the same placeholder in the document. The map is kept **in RAM only** during execution and never written to disk, unless `--export-vault` is used explicitly.
 
+### False-positive filtering
+
+The resolver applies three automatic safeguards against ML model false positives:
+
+- **Structural punctuation**: CSV/tabular separators (comma, semicolon, tab) are stripped from the edges of OPF/GLiNER spans before merging, preventing the comma between a name and an e-mail from being absorbed into the placeholder.
+- **Non-PII word list**: an exclusion list covers column headers, common Italian city names, job titles, and product/device names (e.g. `Mouse`, `Tastiera`, `Laptop`, `Monitor`) that ML models tend to misclassify as PERSONA.
+- **Invalid URLs**: spans classified as URL by GLiNER/OPF are discarded if the text contains no real URL pattern (`http://`, `www.`, domain with TLD). This prevents common words like `Laptop` from being masked as `[URL_1]`.
+
 ---
 
 ## Metadata handling

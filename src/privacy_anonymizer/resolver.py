@@ -1,8 +1,13 @@
 from __future__ import annotations
 
+import re
 from collections import Counter
 
 from privacy_anonymizer.models import DetectionSpan
+
+# Characters that may be appended to a name/entity by the ML model but are
+# structural separators in CSV/tabular text, not part of the entity value.
+_STRIP_PUNCT = frozenset(", ;\t")
 
 SOURCE_PRIORITY = {"pattern": 3, "opf": 2, "gliner": 1}
 LABEL_ALIASES = {
@@ -27,7 +32,12 @@ def resolve_spans(spans: list[DetectionSpan], max_gap: int = 3, text: str = "") 
         expanded: list[DetectionSpan] = []
         for s in spans:
             expanded.extend(_split_on_newlines(s, text))
-        spans = [s for s in expanded if not _is_false_positive(text[s.start:s.end])]
+        trimmed: list[DetectionSpan] = []
+        for s in expanded:
+            t = _trim_span_punctuation(s, text)
+            if t is not None:
+                trimmed.append(t)
+        spans = [s for s in trimmed if not _is_false_positive(text[s.start:s.end])]
 
     ordered = sorted(spans, key=lambda span: (span.start, span.end, -_priority(span)))
     groups: list[list[DetectionSpan]] = []
@@ -101,20 +111,51 @@ def _split_on_newlines(span: DetectionSpan, text: str) -> list[DetectionSpan]:
     return result
 
 
+def _trim_span_punctuation(span: DetectionSpan, text: str) -> DetectionSpan | None:
+    """Strip leading/trailing CSV separators from ML-detected spans.
+
+    OPF sometimes includes trailing commas or semicolons that are structural
+    separators, not part of the entity value. Only applied to ML sources (opf,
+    gliner) — regex-based patterns are already precise.
+    """
+    if span.source not in ("opf", "gliner"):
+        return span
+    start, end = span.start, span.end
+    while start < end and text[start] in _STRIP_PUNCT:
+        start += 1
+    while end > start and text[end - 1] in _STRIP_PUNCT:
+        end -= 1
+    if start >= end:
+        return None
+    if start == span.start and end == span.end:
+        return span
+    return DetectionSpan(start, end, span.label, span.source, span.score)
+
+
+_FALSE_POSITIVE_WORDS: frozenset[str] = frozenset({
+    # Italian column/header names
+    "Sesso", "Cognome", "Nome", "Ruolo", "Azienda", "Provincia", "Citta", "Stato",
+    "Indirizzo", "CAP", "Data", "Nota", "Note", "Email", "Telefono", "Cellulare",
+    # Common Italian locations
+    "Roma", "Milano", "Napoli", "Torino", "Genova", "Palermo", "Bologna", "Firenze",
+    "Venezia", "Verona", "Messina", "Catania", "Padova", "Trieste", "Brescia",
+    "Parma", "Ravenna", "Perugia", "Modena", "Reggio", "Cagliari", "Lecce",
+    # Common Italian job titles
+    "Analista", "Tecnico", "Manager", "Impiegato", "Operaio", "Consulente",
+    "Specialista", "Coordinatore", "Responsabile", "Direttore", "Supervisore",
+    # Common product / device names that ML models mistake for person names
+    "Mouse", "Monitor", "Tastiera", "Stampante", "Schermo", "Notebook", "Laptop",
+    "Computer", "Tablet", "Server", "Router", "Webcam", "Cuffie", "Scanner",
+    "Smartphone", "Telefono", "Cellulare", "Fotocamera", "Proiettore",
+    # Generic commercial terms
+    "Prodotto", "Articolo", "Servizio", "Ordine", "Fattura", "Prezzo", "Quantita",
+    "Descrizione", "Categoria", "Marca", "Modello", "Colore", "Taglia",
+})
+
+
+_FALSE_POSITIVE_LOWER: frozenset[str] = frozenset(w.lower() for w in _FALSE_POSITIVE_WORDS)
+
+
 def _is_false_positive(text: str) -> bool:
-    # Filter out obvious non-personal data that OPF incorrectly detects as PERSONA
-    # Italian column headers, locations, job titles, etc.
-    false_positives = {
-        # Italian column/header names
-        "Sesso", "Cognome", "Nome", "Ruolo", "Azienda", "Provincia", "Citta", "Stato",
-        "Indirizzo", "CAP", "Data", "Nota", "Note", "Email", "Telefono", "Cellulare",
-        # Common Italian locations
-        "Roma", "Milano", "Napoli", "Torino", "Genova", "Palermo", "Bologna", "Firenze",
-        "Venezia", "Verona", "Messina", "Catania", "Padova", "Trieste", "Brescia",
-        "Parma", "Ravenna", "Perugia", "Modena", "Reggio", "Cagliari", "Lecce",
-        # Common Italian job titles
-        "Analista", "Tecnico", "Manager", "Impiegato", "Operaio", "Consulente",
-        "Specialista", "Coordinatore", "Responsabile", "Direttore", "Supervisore",
-    }
-    return text in false_positives
+    return text in _FALSE_POSITIVE_WORDS or text.lower() in _FALSE_POSITIVE_LOWER
 
