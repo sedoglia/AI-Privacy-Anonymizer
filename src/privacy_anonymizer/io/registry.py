@@ -5,6 +5,7 @@ from pathlib import Path
 from privacy_anonymizer.io.base import FileAdapter
 from privacy_anonymizer.io.email_files import EmlAdapter, MsgAdapter
 from privacy_anonymizer.io.images import ImageAdapter
+from privacy_anonymizer.io.json_files import JsonAdapter
 from privacy_anonymizer.io.legacy import LegacyDocAdapter, LegacyXlsAdapter, RtfAdapter
 from privacy_anonymizer.io.office import DocxAdapter, PptxAdapter, XlsxAdapter
 from privacy_anonymizer.io.pdf import PdfAdapter
@@ -24,6 +25,7 @@ ADAPTERS: tuple[FileAdapter, ...] = (
     LegacyDocAdapter(),
     LegacyXlsAdapter(),
     XmlAdapter(),
+    JsonAdapter(),
 )
 SUPPORTED_EXTENSIONS = frozenset(extension for adapter in ADAPTERS for extension in adapter.extensions)
 

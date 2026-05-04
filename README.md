@@ -169,6 +169,7 @@ L'insieme completo delle categorie emesse verso il masking engine, dopo normaliz
 | Immagini | `.png` `.jpg` `.jpeg` `.tiff` `.bmp` | RapidOCR (ONNX) | Pillow | Redazione a coordinate OCR; fallback a immagine testo plano |
 | Email | `.eml` | stdlib `email` | stdlib `email` | From/To/Cc/Subject + body |
 | XML/FatturaPA | `.xml` | `xml.etree` | `xml.etree` | Testo e attributi; struttura XML preservata |
+| JSON | `.json` | built-in | built-in | Valori stringa (foglie); struttura, numeri e booleani preservati |
 | RTF | `.rtf` | `striprtf` | built-in minimal | Ricostruzione RTF semplificata |
 
 ### Solo lettura (output `.txt` anonimizzato)
@@ -923,7 +924,8 @@ src/privacy_anonymizer/
     ├── images.py            # .png .jpg .jpeg .tiff .bmp (Pillow + RapidOCR)
     ├── email_files.py       # .eml .msg
     ├── legacy.py            # .doc .xls .rtf
-    └── xml_files.py         # .xml (FatturaPA)
+    ├── xml_files.py         # .xml (FatturaPA)
+    └── json_files.py        # .json
 
 tests/
 ├── test_anonymizer.py          # Test Anonymizer end-to-end
