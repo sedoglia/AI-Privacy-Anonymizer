@@ -15,6 +15,21 @@ LAYER_COLORS = {
     "gliner": "#a5d6a7",
 }
 
+DOWNLOAD_CSS = """
+    .file-name a, .file-preview a, a[download] {
+        background: #2563eb;
+        color: #fff !important;
+        padding: 3px 10px;
+        border-radius: 5px;
+        font-weight: 700;
+        font-size: 0.9em;
+        text-decoration: none !important;
+    }
+    .file-name a:hover, .file-preview a:hover, a[download]:hover {
+        background: #1d4ed8;
+    }
+"""
+
 LEGEND_HTML = (
     '<div style="margin-bottom:8px;font-size:0.9em">'
     '<span style="background:#ffd54f;padding:2px 6px;border-radius:3px;margin-right:6px">Layer 3 pattern</span>'
@@ -68,7 +83,7 @@ def create_app():
 
     def anonymize_file(file_obj, mode: str, hybrid: bool):
         if file_obj is None:
-            return None, {"warnings": ["Nessun file caricato."]}
+            return gr.update(visible=False), {"warnings": ["Nessun file caricato."]}
         anonymizer = Anonymizer(LayerConfig(
             masking_mode=mode,
             opf_enabled=hybrid,
@@ -81,7 +96,8 @@ def create_app():
         source = Path(file_obj.name)
         output_dir = tempfile.mkdtemp(prefix="privacy-anonymizer-")
         result = anonymizer.process_file(source, output_dir=output_dir)
-        return str(result.output_path), result.audit_report
+        output_path = str(result.output_path)
+        return gr.update(value=output_path, visible=True), result.audit_report
 
     with gr.Blocks(title="AI Privacy Anonymizer") as demo:
         gr.Markdown("# AI Privacy Anonymizer")
@@ -99,11 +115,20 @@ def create_app():
             file_mode = gr.Dropdown(["replace", "redact", "generalize", "hash"], value="replace", label="Modalità")
             file_hybrid = gr.Checkbox(value=True, label="Modalità Hybrid (OPF + GLiNER)")
             file_btn = gr.Button("Anonimizza file")
-            file_output = gr.File(label="Output")
+            download_btn = gr.DownloadButton(
+                label="⬇  Scarica file anonimizzato",
+                variant="primary",
+                size="lg",
+                visible=False,
+            )
             file_audit = gr.JSON(label="Audit")
-            file_btn.click(anonymize_file, inputs=[file_input, file_mode, file_hybrid], outputs=[file_output, file_audit])
+            file_btn.click(
+                anonymize_file,
+                inputs=[file_input, file_mode, file_hybrid],
+                outputs=[download_btn, file_audit],
+            )
     return demo
 
 
 def launch() -> None:
-    create_app().launch(inbrowser=True)
+    create_app().launch(inbrowser=True, css=DOWNLOAD_CSS)
