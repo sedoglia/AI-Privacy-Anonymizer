@@ -7,6 +7,8 @@
 
 A local Python tool for automatically detecting and masking personally identifiable information (PII) from documents of various formats before uploading them to AI chatbots (Claude, ChatGPT, Gemini, etc.) without risk of data leakage. Everything runs locally: **no data ever leaves the device** during anonymization.
 
+> **[Download the latest release on GitHub](https://github.com/sedoglia/AI-Privacy-Anonymizer/releases/latest)** — includes a pre-built Windows executable (no Python installation required).
+
 ---
 
 ## Quick Start
@@ -289,13 +291,31 @@ privacy-anonymizer --setup
 
 ## Windows standalone executable
 
-To distribute the tool as a self-contained `.exe` on Windows — no Python or any dependency required for the end user:
+Self-contained `.exe` for Windows — no Python or any dependency required for the end user.
+
+### Pre-built download (recommended)
+
+**[⬇ Download privacy-anonymizer.exe from release v0.1.0](https://github.com/sedoglia/AI-Privacy-Anonymizer/releases/tag/v0.1.0)**
+
+> The file (~2.7 GB) is hosted on Google Drive because it exceeds GitHub's 2 GB limit. The link is available on the release page.
+
+After downloading, run it from the terminal:
+
+```
+privacy-anonymizer.exe document.pdf
+```
+
+> On first run, ML models (~500 MB) are downloaded automatically.
+
+### Build from source
+
+To regenerate the executable locally:
 
 ```bash
 pyinstaller dist/privacy_anonymizer.spec --distpath dist --workpath build/pyinstaller
 ```
 
-Output: `dist/privacy-anonymizer.exe` (~2.7 GB). The bundle includes all three ML layers (OPF, GLiNER, patterns), RapidOCR, all format adapters, and the Python runtime. End users run the `.exe` directly — no installation needed.
+Output: `dist/privacy-anonymizer.exe` (~2.7 GB). The bundle includes all three ML layers (OPF, GLiNER, patterns), RapidOCR, all format adapters, and the Python runtime.
 
 Build files are version-controlled in `dist/`:
 
