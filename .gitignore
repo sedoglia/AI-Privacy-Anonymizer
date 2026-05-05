@@ -10,7 +10,9 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
+dist/*.exe
+dist/*.pkg
+dist/build/
 downloads/
 eggs/
 .eggs/
@@ -31,6 +33,7 @@ MANIFEST
 #   before PyInstaller builds the exe, so as to inject date/other infos into it.
 *.manifest
 *.spec
+!dist/privacy_anonymizer.spec
 
 # Installer logs
 pip-log.txt

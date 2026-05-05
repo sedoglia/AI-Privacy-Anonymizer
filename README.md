@@ -37,6 +37,7 @@ L'output viene salvato nella stessa cartella del file originale con il suffisso 
 - [Formati file supportati](#formati-file-supportati)
 - [Modalità di mascheratura](#modalità-di-mascheratura)
 - [Installazione](#installazione)
+- [Eseguibile Windows (EXE standalone)](#eseguibile-windows-exe-standalone)
 - [Utilizzo — CLI](#utilizzo--cli)
 - [Utilizzo — Python API](#utilizzo--python-api)
 - [Web UI locale (Gradio)](#web-ui-locale-gradio)
@@ -283,6 +284,27 @@ Richiede ~3 GB di spazio per il download del modello al primo avvio.
 ```bash
 privacy-anonymizer --setup
 ```
+
+---
+
+## Eseguibile Windows (EXE standalone)
+
+Per distribuire il tool come file `.exe` autonomo su Windows — senza che il destinatario installi Python o qualsiasi dipendenza:
+
+```bash
+pyinstaller dist/privacy_anonymizer.spec --distpath dist --workpath build/pyinstaller
+```
+
+Output: `dist/privacy-anonymizer.exe` (~2.7 GB). Il bundle include tutti e tre i layer ML (OPF, GLiNER, pattern), RapidOCR, tutti gli adattatori di formato e il runtime Python. L'utente finale esegue direttamente il file `.exe`, nessuna installazione richiesta.
+
+I file di build sono versionati in `dist/`:
+
+| File | Scopo |
+|---|---|
+| `dist/privacy_anonymizer.spec` | Specifica PyInstaller (hiddenimports, runtime hooks) |
+| `dist/hooks/rthook_tiktoken.py` | Runtime hook: corregge il bug di tiktoken nei bundle PyInstaller (namespace package `tiktoken_ext` non trovato da `pkgutil.iter_modules`) |
+
+> **Nota:** `dist/privacy-anonymizer.exe` è escluso dal repository (troppo grande). Va rigenerato localmente con il comando sopra.
 
 ---
 
