@@ -295,9 +295,9 @@ File `.exe` autonomo per Windows — nessuna installazione di Python richiesta.
 
 ### Download precompilato (consigliato)
 
-**[⬇ Scarica privacy-anonymizer.exe dalla release v0.1.0](https://github.com/sedoglia/AI-Privacy-Anonymizer/releases/tag/v0.1.0)**
+**[⬇ Scarica privacy-anonymizer.exe (Google Drive)](https://drive.google.com/file/d/158dsFJ9l5ju06v8Akj62-uS77sepYi76/view?usp=sharing)**
 
-> Il file (~2.7 GB) è distribuito tramite Google Drive perché supera il limite di 2 GB di GitHub. Il link è disponibile nella pagina della release.
+> Il file (~2.7 GB) è distribuito tramite Google Drive perché supera il limite di 2 GB di GitHub.
 
 Dopo il download, eseguire dal terminale:
 
