@@ -88,3 +88,6 @@ allow-direct-references = true
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = [
+  "live: test che richiedono il server in esecuzione (--live)",
+]

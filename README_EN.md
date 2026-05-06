@@ -267,8 +267,16 @@ This internally runs `pip install "ai-privacy-anonymizer[recommended]"` followed
 ```bash
 git clone https://github.com/sedoglia/AI-Privacy-Anonymizer.git
 cd AI-Privacy-Anonymizer
-pip install -e ".[dev,office,documents,ml]"
+pip install -e ".[dev,office,documents,ml,api]"
+
+# Run the full suite (excludes tests that require a running server)
 pytest
+
+# API REST tests only (no server needed)
+pytest tests/api/ --ignore=tests/api/test_live.py
+
+# Live tests against a running server (start first: privacy-anonymizer --api)
+pytest tests/api/test_live.py --live
 ```
 
 ### Layer 1 OPF only (external, separate installation)
@@ -976,13 +984,22 @@ src/privacy_anonymizer/
     └── json_files.py        # .json
 
 tests/
-├── test_anonymizer.py          # End-to-end Anonymizer tests
-├── test_patterns_it.py         # Italian pattern + checksum tests
-├── test_masking.py             # EntityMapper and MaskingPlan tests
-├── test_office_adapters.py     # DOCX/XLSX/PPTX tests
-├── test_document_adapters.py   # PDF/image/EML/legacy tests
-├── test_gliner_detector.py     # GlinerDetector tests (mock)
-├── test_opf_detector.py        # OpfDetector tests (mock)
-├── test_image_redaction.py     # Image coordinate redaction tests (mock)
-└── test_completion_features.py # CLI + evaluation + compliance + MCP tests
+├── conftest.py                  # Shared fixtures: TestClient, sample_dir, live
+├── api/
+│   ├── test_health.py           # GET /health
+│   ├── test_text.py             # POST /anonymize/text (modes, hybrid, Italian PII)
+│   ├── test_file.py             # POST /anonymize/file (TXT, JSON, modes)
+│   ├── test_edge_cases.py       # Robustness, idempotency, disallowed HTTP methods
+│   └── test_live.py             # Tests against a live server (--live)
+├── sample_files/                # Sample TXT/JSON files with Italian PII for API tests
+├── test_anonymizer.py           # End-to-end Anonymizer tests
+├── test_patterns_it.py          # Italian pattern + checksum tests
+├── test_resolver.py             # Span Resolver and false-positive filter tests
+├── test_office_adapters.py      # DOCX/XLSX/PPTX tests
+├── test_document_adapters.py    # PDF/image/EML/RTF tests
+├── test_json_adapter.py         # JSON adapter tests
+├── test_gliner_detector.py      # GlinerDetector tests (mock)
+├── test_opf_detector.py         # OpfDetector tests (mock)
+├── test_image_redaction.py      # Image coordinate redaction tests (mock)
+└── test_gap_implementations.py  # Synthetic dataset, low-memory, vault, MCP, compliance tests
 ```

@@ -1,0 +1,15 @@
+REPORT TECNICO
+
+Il sistema di intelligenza artificiale analizza i testi in ingresso e produce
+un output anonimizzato. L'algoritmo utilizza tre livelli di rilevamento:
+
+1. Livello OPF (OpenAI Privacy Filter)
+2. Livello GLiNER (Named Entity Recognition)
+3. Livello Pattern (espressioni regolari)
+
+I risultati vengono combinati e de-duplicati prima di applicare la maschera.
+Le modalità di mascheramento supportate sono: replace, redact, generalize, hash.
+
+Contatti generici:
+- Supporto: support@example.com
+- Sito web: https://example.com

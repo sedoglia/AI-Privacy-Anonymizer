@@ -1,0 +1,24 @@
+{
+  "utenti": [
+    {
+      "id": 1,
+      "nome": "Giulia Bianchi",
+      "codice_fiscale": "BNCGLI92A41F205Z",
+      "email": "giulia.bianchi@email.it",
+      "telefono": "3391234567",
+      "indirizzo": "Corso Vittorio Emanuele 10, 10121 Torino TO"
+    },
+    {
+      "id": 2,
+      "nome": "Luca Ferrari",
+      "codice_fiscale": "FRRLCU80E15G224Y",
+      "email": "luca.ferrari@posta.it",
+      "telefono": "+39 06 9876543",
+      "indirizzo": "Piazza San Marco 5, 30124 Venezia VE"
+    }
+  ],
+  "sistema": {
+    "versione": "1.0.0",
+    "ambiente": "produzione"
+  }
+}

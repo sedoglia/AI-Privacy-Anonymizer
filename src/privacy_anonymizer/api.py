@@ -6,13 +6,16 @@ from pathlib import Path
 from privacy_anonymizer.anonymizer import Anonymizer
 from privacy_anonymizer.config import LayerConfig
 
+try:
+    from fastapi import FastAPI, File, Form, UploadFile
+    from fastapi.responses import FileResponse
+except ImportError:
+    FastAPI = UploadFile = File = Form = FileResponse = None  # type: ignore[assignment,misc]
+
 
 def create_app():
-    try:
-        from fastapi import FastAPI, File, Form, UploadFile
-        from fastapi.responses import FileResponse
-    except ImportError as exc:
-        raise RuntimeError("FastAPI non installato: installa con `python -m pip install -e .[api]`.") from exc
+    if FastAPI is None:
+        raise RuntimeError("FastAPI non installato: installa con `python -m pip install -e .[api]`.")
 
     app = FastAPI(title="AI Privacy Anonymizer", version="0.1.0")
 
