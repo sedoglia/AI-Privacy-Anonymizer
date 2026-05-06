@@ -9,7 +9,7 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 import os
-from PyInstaller.utils.hooks import collect_submodules
+from PyInstaller.utils.hooks import collect_submodules, collect_data_files
 
 block_cipher = None
 
@@ -47,13 +47,41 @@ hiddenimports = [
     # all submodules are bundled, including those loaded lazily at runtime.
     *collect_submodules("gliner"),
     *collect_submodules("torch.fx"),
+    # gradio and its web server stack have many lazily loaded modules.
+    *collect_submodules("gradio"),
+    *collect_submodules("gradio_client"),
+    "safehttpx",
+    "aiofiles",
+    "anyio",
+    "starlette",
+    "uvicorn",
+    "uvicorn.logging",
+    "uvicorn.loops",
+    "uvicorn.loops.auto",
+    "uvicorn.loops.asyncio",
+    "uvicorn.protocols",
+    "uvicorn.protocols.http",
+    "uvicorn.protocols.http.auto",
+    "uvicorn.protocols.websockets",
+    "uvicorn.protocols.websockets.auto",
+    "uvicorn.lifespan",
+    "uvicorn.lifespan.on",
+    "fastapi",
+    "httpx",
+    "websockets",
 ]
+
+datas = []
+datas += collect_data_files("safehttpx")
+datas += collect_data_files("groovy")
+datas += collect_data_files("gradio", include_py_files=True)
+datas += collect_data_files("gradio_client", include_py_files=False)
 
 a = Analysis(
     ["../src/privacy_anonymizer/cli.py"],
     pathex=["../src"],
     binaries=[],
-    datas=[],
+    datas=datas,
     hiddenimports=hiddenimports,
     hookspath=[],
     hooksconfig={},

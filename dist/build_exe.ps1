@@ -12,7 +12,7 @@ $root = Split-Path -Parent $PSScriptRoot
 Push-Location $root
 try {
     Write-Host "Building privacy-anonymizer.exe ..."
-    pyinstaller --clean --noconfirm packaging/privacy_anonymizer.spec
+    pyinstaller --clean --noconfirm dist/privacy_anonymizer.spec
     Write-Host "Done. Binary at: dist/privacy-anonymizer.exe"
 }
 finally {
