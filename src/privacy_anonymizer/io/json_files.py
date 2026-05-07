@@ -11,7 +11,7 @@ class JsonAdapter(FileAdapter):
     extensions = {".json"}
 
     def read_text(self, path: Path) -> FileContent:
-        with path.open(encoding="utf-8") as f:
+        with path.open(encoding="utf-8-sig") as f:
             data = json.load(f)
         values: list[str] = []
         _collect_strings(data, values)
@@ -31,7 +31,7 @@ class JsonAdapter(FileAdapter):
         source_content=None,
     ) -> WriteResult:
         del keep_metadata, replacements, original_text, source_content
-        with source.open(encoding="utf-8") as f:
+        with source.open(encoding="utf-8-sig") as f:
             data = json.load(f)
         lines = iter(anonymized_text.splitlines())
         data = _replace_strings(data, lines)

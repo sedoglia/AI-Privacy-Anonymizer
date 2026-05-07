@@ -47,9 +47,41 @@ hiddenimports = [
     # all submodules are bundled, including those loaded lazily at runtime.
     *collect_submodules("gliner"),
     *collect_submodules("torch.fx"),
+    # torch is also imported directly in anonymizer._resolve_device() for CUDA auto-detect.
+    "torch",
     # gradio and its web server stack have many lazily loaded modules.
     *collect_submodules("gradio"),
     *collect_submodules("gradio_client"),
+    # rapidocr has dynamic imports for its inference engines and post-processors.
+    *collect_submodules("rapidocr"),
+    # ---- Document / office adapters (lazy-loaded via _import_*() helpers) ----
+    # PyInstaller's static analysis cannot see imports inside try-except functions;
+    # every adapter package must be listed here explicitly.
+    #
+    # PDF: fitz is a thin re-export wrapper; the real package is pymupdf.
+    *collect_submodules("fitz"),
+    *collect_submodules("pymupdf"),
+    *collect_submodules("pypdf"),
+    # Images
+    *collect_submodules("PIL"),
+    # Office formats
+    *collect_submodules("docx"),
+    *collect_submodules("openpyxl"),
+    *collect_submodules("pptx"),
+    # Legacy formats
+    *collect_submodules("xlrd"),
+    *collect_submodules("striprtf"),
+    # Email
+    *collect_submodules("extract_msg"),
+    # XML/HTML processing (used by docx track-changes acceptance)
+    *collect_submodules("lxml"),
+    # Compliance PDF export
+    *collect_submodules("reportlab"),
+    # Progress bar (lazy-loaded in anonymizer._RichProgressBar)
+    *collect_submodules("rich"),
+    # OPF (openai/privacy-filter): imported with bare `import opf` inside try-except
+    *collect_submodules("opf"),
+    # ---- Web / API stack ----
     "safehttpx",
     "aiofiles",
     "anyio",
@@ -76,6 +108,25 @@ datas += collect_data_files("safehttpx")
 datas += collect_data_files("groovy")
 datas += collect_data_files("gradio", include_py_files=True)
 datas += collect_data_files("gradio_client", include_py_files=False)
+# rapidocr needs its config YAMLs and bundled ONNX models at runtime;
+# without these the engine raises FileNotFoundError on default_models.yaml.
+datas += collect_data_files("rapidocr")
+# ---- Document / office adapter data files ----
+# pymupdf bundles mupdfcpp64.dll (24 MB) inside the package directory;
+# collect_data_files maps it correctly to pymupdf/ so the C extension finds it.
+datas += collect_data_files("pymupdf")
+# python-docx and python-pptx ship XML/image templates used to create new files.
+datas += collect_data_files("docx")
+datas += collect_data_files("pptx")
+# reportlab ships fonts (TTF) and other resources needed at runtime.
+datas += collect_data_files("reportlab")
+# Remaining adapters have small-but-required data files (schemas, tzdata, etc.).
+datas += collect_data_files("pypdf")
+datas += collect_data_files("PIL")
+datas += collect_data_files("extract_msg")
+datas += collect_data_files("striprtf")
+datas += collect_data_files("rich")
+datas += collect_data_files("lxml")
 
 a = Analysis(
     ["../src/privacy_anonymizer/cli.py"],
@@ -86,11 +137,7 @@ a = Analysis(
     hookspath=[],
     hooksconfig={},
     runtime_hooks=[os.path.join(SPECPATH, "hooks", "rthook_tiktoken.py")],
-    excludes=[
-        # ML packages excluded from base build to keep .exe small.
-        # User can install GLiNER/OPF in the runtime Python alongside the .exe
-        # only if the build is intended to bundle them.
-    ],
+    excludes=[],
     win_no_prefer_redirects=False,
     win_private_assemblies=False,
     cipher=block_cipher,
