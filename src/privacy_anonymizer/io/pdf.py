@@ -19,6 +19,12 @@ OCR_RENDER_DPI = 300
 # real text PDFs (≥20 chars) on the faster coordinate-redaction path.
 _MIN_MEANINGFUL_TEXT = 20
 
+# JPEG quality used when rebuilding scanned PDFs after redaction.
+# apply_redactions() decompresses JPEG images and stores them as deflate streams,
+# which can be 5-10x larger than the original. Rebuilding with JPEG keeps file
+# size comparable to the original scan.
+_SCANNED_PDF_JPEG_QUALITY = 85
+
 
 class PdfAdapter(FileAdapter):
     extensions = {".pdf"}
@@ -354,6 +360,47 @@ def _write_coordinate_redacted_pdf(
     return redaction_count
 
 
+def _page_effective_dpi(page, fallback: int = 150, cap: int = 200) -> int:
+    """Return the effective DPI of the dominant image on a PDF page.
+
+    After apply_redactions() the image pixel dimensions are unchanged, so we can
+    still read the original scan resolution from the image info.
+    """
+    images = page.get_image_info()
+    if not images:
+        return fallback
+    largest = max(images, key=lambda i: i.get("width", 0) * i.get("height", 0))
+    img_w = largest.get("width", 0)
+    page_w_inches = page.rect.width / 72.0
+    if img_w <= 0 or page_w_inches <= 0:
+        return fallback
+    return min(round(img_w / page_w_inches), cap)
+
+
+def _save_scanned_as_jpeg(fitz, source_doc, destination: Path) -> None:
+    """Rebuild a scanned PDF with JPEG-compressed page images.
+
+    After apply_redactions() PyMuPDF stores modified JPEG images as raw deflate
+    streams, which can be 5-10x larger than the original. Re-rendering each page
+    as a JPEG at the original scan DPI (capped at 200) keeps the output size
+    close to the input.
+    """
+    out = fitz.open()
+    try:
+        for page in source_doc:
+            rect = page.rect
+            dpi = _page_effective_dpi(page)
+            pix = page.get_pixmap(dpi=dpi, alpha=False)
+            new_page = out.new_page(width=rect.width, height=rect.height)
+            new_page.insert_image(
+                rect,
+                stream=pix.tobytes("jpeg", jpg_quality=_SCANNED_PDF_JPEG_QUALITY),
+            )
+        out.save(destination, garbage=4, deflate=False)
+    finally:
+        out.close()
+
+
 def _write_ocr_redacted_pdf(
     source: Path,
     destination: Path,
@@ -487,6 +534,8 @@ def _write_ocr_redacted_pdf(
         if not keep_metadata:
             document.set_metadata({})
         if redaction_count:
+            _save_scanned_as_jpeg(fitz, document, destination)
+        else:
             document.save(destination, garbage=4, deflate=True)
     finally:
         document.close()
