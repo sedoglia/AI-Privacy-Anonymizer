@@ -357,7 +357,7 @@ class Anonymizer:
         metadata_stripped: bool | None = None,
     ) -> dict:
         return {
-            "tool_version": "0.1.0",
+            "tool_version": "0.2.0",
             "source_file": str(source_file) if source_file else None,
             "output_file": str(output_file) if output_file else None,
             "processed_at": datetime.now(timezone.utc).isoformat(),

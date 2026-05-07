@@ -1,6 +1,6 @@
 # AI Privacy Anonymizer
 
-**Version:** 0.1.0  
+**Version:** 0.2.0  
 **Author:** Sergio Dogliani  
 **License:** MIT  
 **Python:** ≥ 3.11
@@ -792,7 +792,7 @@ Each processing run produces a `.audit.json` file in the same location as the ou
 
 ```json
 {
-  "tool_version": "0.1.0",
+  "tool_version": "0.2.0",
   "source_file": "contratto_fornitura.docx",
   "output_file": "contratto_fornitura_anonymized.docx",
   "processed_at": "2026-04-30T14:32:01+00:00",

@@ -17,7 +17,7 @@ def create_app():
     if FastAPI is None:
         raise RuntimeError("FastAPI non installato: installa con `python -m pip install -e .[api]`.")
 
-    app = FastAPI(title="AI Privacy Anonymizer", version="0.1.0")
+    app = FastAPI(title="AI Privacy Anonymizer", version="0.2.0")
 
     @app.get("/health")
     def health():
