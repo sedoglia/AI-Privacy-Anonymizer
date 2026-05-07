@@ -307,7 +307,7 @@ Self-contained `.exe` for Windows — no Python or any dependency required for t
 
 **[⬇ Download privacy-anonymizer.exe (Google Drive, ~2.85 GB)](https://drive.google.com/file/d/1TDXe-hzV4BdhQnOMgzhXrGKnNXDUPtDt/view?usp=sharing)**
 
-> The file (~2.7 GB) is hosted on Google Drive because it exceeds GitHub's 2 GB limit.
+> The file (~2.85 GB) is hosted on Google Drive because it exceeds GitHub's 2 GB limit.
 
 After downloading, run it from the terminal:
 
