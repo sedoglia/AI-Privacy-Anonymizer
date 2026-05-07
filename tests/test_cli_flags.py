@@ -6,7 +6,6 @@ ML (--recall-mode, --gliner-threshold) sono marcati con le cautele appropriate.
 from __future__ import annotations
 
 import json
-from pathlib import Path
 
 import pytest
 

@@ -4,7 +4,6 @@ from __future__ import annotations
 from pathlib import Path
 
 import pytest
-import xlrd
 
 from privacy_anonymizer import Anonymizer
 from privacy_anonymizer.config import LayerConfig
@@ -95,7 +94,6 @@ def test_xls_adapter_write_result_has_warning(tmp_path: Path) -> None:
     _skip_if_no_xlwt()
     xls = tmp_path / "test.xls"
     _make_xls(xls, [["CF RSSMRA80A01L219M"]])
-    content = LegacyXlsAdapter().read_text(xls)
     dest = tmp_path / "out.txt"
     write_result = LegacyXlsAdapter().write_anonymized(xls, dest, "anonimizzato", keep_metadata=False)
     assert write_result.metadata_stripped is True

@@ -5,12 +5,51 @@ build-backend = "hatchling.build"
 [project]
 name = "ai-privacy-anonymizer"
 version = "0.1.0"
-description = "Local-first privacy anonymizer for Italian PII."
+description = "Local-first privacy anonymizer for Italian PII (GDPR-aware)."
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [{ name = "Sergio Dogliani" }]
+keywords = [
+  "privacy",
+  "pii",
+  "anonymization",
+  "gdpr",
+  "italian",
+  "redaction",
+  "ner",
+  "gliner",
+  "pdf",
+  "ocr",
+  "data-protection",
+  "local-first",
+]
+classifiers = [
+  "Development Status :: 4 - Beta",
+  "Intended Audience :: Developers",
+  "Intended Audience :: Information Technology",
+  "Intended Audience :: Legal Industry",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+  "Programming Language :: Python :: 3.13",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Security",
+  "Topic :: Text Processing :: Linguistic",
+  "Topic :: Office/Business",
+  "Natural Language :: Italian",
+  "Environment :: Console",
+  "Environment :: Web Environment",
+]
 dependencies = []
+
+[project.urls]
+Homepage = "https://github.com/sedoglia/AI-Privacy-Anonymizer"
+Repository = "https://github.com/sedoglia/AI-Privacy-Anonymizer"
+Issues = "https://github.com/sedoglia/AI-Privacy-Anonymizer/issues"
+Releases = "https://github.com/sedoglia/AI-Privacy-Anonymizer/releases"
 
 [project.optional-dependencies]
 dev = ["pytest>=8.0", "httpx>=0.27"]

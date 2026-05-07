@@ -2,7 +2,6 @@ from __future__ import annotations
 
 from privacy_anonymizer.models import DetectionSpan
 from privacy_anonymizer.resolver import (
-    _FALSE_POSITIVE_WORDS,
     _is_false_positive,
     _trim_span_punctuation,
     resolve_spans,

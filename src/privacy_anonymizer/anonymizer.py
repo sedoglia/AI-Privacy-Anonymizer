@@ -8,15 +8,14 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from privacy_anonymizer.config import LayerConfig, MaskingMode
-
-logger = logging.getLogger(__name__)
+from privacy_anonymizer.config import LayerConfig
 from privacy_anonymizer.detectors import GlinerDetector, ItalianPatternDetector, OpfDetector
-from privacy_anonymizer.io import SUPPORTED_EXTENSIONS, get_adapter
-from privacy_anonymizer.io import _ocr
+from privacy_anonymizer.io import SUPPORTED_EXTENSIONS, _ocr, get_adapter
 from privacy_anonymizer.masking import ReplacementSpan, build_masking_plan, mask_text
 from privacy_anonymizer.models import DetectionSpan
 from privacy_anonymizer.resolver import category_counts, resolve_spans
+
+logger = logging.getLogger(__name__)
 
 
 class _RichProgressBar:

@@ -8,14 +8,9 @@ from __future__ import annotations
 
 import pytest
 
-from privacy_anonymizer.detectors.patterns_it import (
-    ItalianPatternDetector,
-    validate_codice_fiscale,
-    validate_iban,
-    validate_partita_iva,
-)
+from privacy_anonymizer.detectors.patterns_it import ItalianPatternDetector
 from privacy_anonymizer.models import DetectionSpan
-from privacy_anonymizer.resolver import _is_false_positive, resolve_spans
+from privacy_anonymizer.resolver import _is_false_positive
 
 _D = ItalianPatternDetector()
 

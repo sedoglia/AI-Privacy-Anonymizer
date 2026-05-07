@@ -10,7 +10,6 @@ from privacy_anonymizer import Anonymizer
 from privacy_anonymizer.cli import _restore_from_vault
 from privacy_anonymizer.config import LayerConfig
 from privacy_anonymizer.masking import build_masking_plan
-from privacy_anonymizer.models import DetectionSpan
 
 _PATTERN_ONLY = LayerConfig(opf_enabled=False, gliner_enabled=False, parallel=False)
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import re
 from collections import Counter
 
 from privacy_anonymizer.models import DetectionSpan

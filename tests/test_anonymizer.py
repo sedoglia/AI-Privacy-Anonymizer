@@ -1,5 +1,3 @@
-from pathlib import Path
-
 from privacy_anonymizer import Anonymizer
 from privacy_anonymizer.config import LayerConfig
 from privacy_anonymizer.io import supported_extensions

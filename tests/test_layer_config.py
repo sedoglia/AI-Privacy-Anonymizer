@@ -5,8 +5,6 @@ resolver normalize_label/category_counts, _build_chunks algorithm.
 """
 from __future__ import annotations
 
-from pathlib import Path
-
 import pytest
 
 from privacy_anonymizer import Anonymizer

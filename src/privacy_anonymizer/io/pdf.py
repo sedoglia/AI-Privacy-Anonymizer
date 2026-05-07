@@ -178,7 +178,7 @@ def _ocr_pdf_text(path: Path) -> tuple[str, list[list[dict]] | None, list[str]]:
 def _try_rapidocr_pdf(path: Path, warnings: list[str]) -> tuple[str, list[list[dict]] | None]:
     try:
         fitz = _import_fitz()
-        Image = _import_pillow()
+        _import_pillow()
     except MissingOptionalDependencyError as exc:
         warnings.append(f"OCR PDF non disponibile: dipendenza mancante ({exc}).")
         return "", None
