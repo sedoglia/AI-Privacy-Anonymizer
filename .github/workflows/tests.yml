@@ -18,7 +18,7 @@ jobs:
         with:
           python-version: ${{ matrix.python-version }}
       - name: Install
-        run: python -m pip install -e ".[dev,office,documents]"
+        run: python -m pip install -e ".[dev,office,documents,api]"
       - name: Test
         run: python -m pytest
 
