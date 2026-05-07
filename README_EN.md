@@ -122,6 +122,8 @@ Regex with checksum validation where applicable. Active by default with no extra
 | `TESSERA_SANITARIA` | 20-digit pattern with `80` prefix | `80380030001234567890` |
 | `MATRICOLA_INPS` | 8-9 digit pattern with context keyword | `12345678` (after "matricola INPS") |
 | `IP_ADDRESS` | IPv4 pattern with 0-255 octet validation | `192.168.1.10` |
+| `INDIRIZZO` | Pattern (Via/Corso/Piazza/Viale/Vicolo/Largo + street name + number) | `Via Roma 12` |
+| `DOCUMENTO_ID` | Pattern (`ID-` prefix + 6-12 alphanumeric characters) | `ID-ABC123456` |
 
 ---
 
@@ -629,6 +631,13 @@ class DetectionSpan:
     source: str          # "pattern" | "opf" | "gliner"
     score: float         # confidence (1.0 for deterministic patterns)
     metadata: dict       # {"checksum_valid": "true"/"false"} for CF
+
+    @property
+    def length(self) -> int: ...          # end - start
+
+    def overlaps_or_touches(
+        self, other: "DetectionSpan", max_gap: int = 0
+    ) -> bool: ...                        # True if gap between spans ≤ max_gap
 ```
 
 ---
@@ -994,12 +1003,20 @@ tests/
 ├── sample_files/                # Sample TXT/JSON files with Italian PII for API tests
 ├── test_anonymizer.py           # End-to-end Anonymizer tests
 ├── test_patterns_it.py          # Italian pattern + checksum tests
+├── test_patterns_extended.py    # Unit tests for each IT pattern (INDIRIZZO, CI, PEC, IPv4, etc.)
 ├── test_resolver.py             # Span Resolver and false-positive filter tests
+├── test_layer_config.py         # LayerConfig params, DetectionSpan, chunking, normalize_label
 ├── test_office_adapters.py      # DOCX/XLSX/PPTX tests
 ├── test_document_adapters.py    # PDF/image/EML/RTF tests
+├── test_adapters_legacy.py      # LegacyXlsAdapter (xlrd) and RtfAdapter (striprtf) tests
 ├── test_json_adapter.py         # JSON adapter tests
 ├── test_gliner_detector.py      # GlinerDetector tests (mock)
 ├── test_opf_detector.py         # OpfDetector tests (mock)
 ├── test_image_redaction.py      # Image coordinate redaction tests (mock)
+├── test_entity_vault.py         # Entity Vault: structure, roundtrip, de-anonymization
+├── test_evaluation.py           # Synthetic dataset and recall/precision/f1 metrics
+├── test_compliance_report.py    # GDPR PDF report generation (ReportLab)
+├── test_mcp_server.py           # MCP stdio server: JSON-RPC 2.0, all PII types
+├── test_cli_flags.py            # 32+ CLI flags tested with real Italian PII data
 └── test_gap_implementations.py  # Synthetic dataset, low-memory, vault, MCP, compliance tests
 ```
