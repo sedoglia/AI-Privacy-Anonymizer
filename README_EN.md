@@ -31,6 +31,16 @@ privacy-anonymizer-web
 
 Output is saved in the same folder as the original file with the `_anonymized` suffix. For the Web UI, open your browser at the address shown in the terminal (usually `http://127.0.0.1:7860`).
 
+### Layer 1 — OpenAI Privacy Filter (OPF, recommended)
+
+For the most complete PII coverage, also install **OPF**, the first layer of the pipeline (context-aware semantic detection). It is not included in the `[recommended]` extra because it is distributed on GitHub only:
+
+```bash
+pip install "opf @ git+https://github.com/openai/privacy-filter"
+```
+
+> Requires ~3 GB of disk space for the model download on first run. Alternatively, run `privacy-anonymizer --install-full` to install both `[recommended]` and OPF in a single command.
+
 ---
 
 ## Table of Contents
