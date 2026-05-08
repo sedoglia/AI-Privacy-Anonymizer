@@ -8,6 +8,8 @@
 A local Python tool for automatically detecting and masking personally identifiable information (PII) from documents of various formats before uploading them to AI chatbots (Claude, ChatGPT, Gemini, etc.) without risk of data leakage. Everything runs locally: **no data ever leaves the device** during anonymization.
 
 > **[Download the latest release on GitHub](https://github.com/sedoglia/AI-Privacy-Anonymizer/releases/latest)** — includes a pre-built Windows executable (no Python installation required).
+> 
+> See the **[CHANGELOG](CHANGELOG.md)** for the full version history.
 
 ---
 
