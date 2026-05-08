@@ -91,6 +91,22 @@ def test_product_name_not_in_resolved_spans() -> None:
     assert "Mouse" not in span_texts
 
 
+def test_resolver_does_not_merge_across_csv_separator() -> None:
+    text = "piva,iban\n01114601006,IT60X0542811101000000123456"
+    spans = [
+        DetectionSpan(10, 21, "PARTITA_IVA", "pattern"),
+        DetectionSpan(22, 49, "IBAN_IT", "pattern"),
+        DetectionSpan(10, 21, "IBAN", "gliner"),
+    ]
+
+    resolved = resolve_spans(spans, text=text)
+
+    assert [(span.label, text[span.start : span.end]) for span in resolved] == [
+        ("PARTITA_IVA", "01114601006"),
+        ("IBAN_IT", "IT60X0542811101000000123456"),
+    ]
+
+
 # ---------------------------------------------------------------------------
 # URL false-positive filter (via anonymizer._filter_false_positive_personas)
 # ---------------------------------------------------------------------------

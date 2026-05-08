@@ -59,3 +59,16 @@ def test_build_masking_plan_returns_replacements() -> None:
     assert plan.replacements[0].replacement == "[EMAIL_1]"
 
 
+def test_detect_text_continues_when_optional_layer_fails() -> None:
+    class BrokenDetector:
+        def detect(self, text: str):
+            raise RuntimeError("remote model unavailable")
+
+    anonymizer = Anonymizer(LayerConfig(opf_enabled=False, gliner_enabled=False, pattern_enabled=True, parallel=True))
+    anonymizer.config.gliner_enabled = True
+    anonymizer.gliner_detector = BrokenDetector()
+
+    spans = anonymizer.detect_text("email mario.rossi@example.com")
+
+    assert any(span.label == "EMAIL" for span in spans)
+

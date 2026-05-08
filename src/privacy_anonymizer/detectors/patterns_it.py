@@ -11,9 +11,19 @@ PIVA_PATTERN = re.compile(
     r"\b(?:p\.?\s*iva|partita\s+iva|vat)\s*[:#]?\s*(IT\s*)?([0-9]{11})\b",
     re.I,
 )
+PIVA_BARE_PATTERN = re.compile(r"(?<!\d)([0-9]{11})(?!\d)")
 IBAN_IT_PATTERN = re.compile(r"\bIT[0-9]{2}[A-Z][0-9A-Z]{22}\b", re.I)
 TARGA_PATTERN = re.compile(r"\b[A-Z]{2}\s?[0-9]{3}\s?[A-Z]{2}\b", re.I)
 CARTA_IDENTITA_PATTERN = re.compile(r"\b(?:[A-Z]{2}[0-9]{7}|CA[0-9]{7}[A-Z]{2})\b", re.I)
+PASSAPORTO_CONTEXT_PATTERN = re.compile(
+    r"\bpassaporto\s*[:#]?\s*([A-Z]{1,2}[0-9]{6,9})\b",
+    re.I,
+)
+PATENTE_CONTEXT_PATTERN = re.compile(
+    r"\bpatente\s*[:#]?\s*([A-Z][0-9]{7,9})\b",
+    re.I,
+)
+CREDIT_CARD_PATTERN = re.compile(r"(?<!\d)(?:\d[ -]?){13,19}(?!\d)")
 CELL_IT_PATTERN = re.compile(r"(?<!\d)(?:(?:\+39|0039)[\s.-]?)?3[0-9]{2}[\s.-]?[0-9]{3}[\s.-]?[0-9]{4}(?!\d)")
 TEL_IT_PATTERN = re.compile(
     r"(?<![A-Za-z0-9])(?:(?:\+39|0039)[\s.-]?)?0[0-9]{1,4}[\s.-]?[0-9]{4,8}(?!\d)"
@@ -26,6 +36,10 @@ MATRICOLA_INPS_PATTERN = re.compile(
     re.I,
 )
 DOCUMENTO_ID_PATTERN = re.compile(r"\bID-[A-Z0-9]{6,12}\b", re.I)
+SECRET_PATTERN = re.compile(
+    r"\b(?:API_KEY\s*=\s*)?(sk-[A-Za-z0-9_-]{10,})\b",
+    re.I,
+)
 INDIRIZZO_IT_PATTERN = re.compile(
     r"\b(?:via|viale|piazza|piazzale|corso|largo|vicolo|lungarno|borgo|contrada|strada)"
     r"(?:[ \t]+[\w'.]+)+"
@@ -75,7 +89,10 @@ class ItalianPatternDetector:
         spans.extend(self._detect_partita_iva(text))
         spans.extend(self._detect_iban_it(text))
         spans.extend(self._detect_simple(text, TARGA_PATTERN, "TARGA_IT"))
+        spans.extend(self._detect_context_value(text, PASSAPORTO_CONTEXT_PATTERN, "PASSAPORTO"))
+        spans.extend(self._detect_context_value(text, PATENTE_CONTEXT_PATTERN, "PATENTE"))
         spans.extend(self._detect_simple(text, CARTA_IDENTITA_PATTERN, "CARTA_IDENTITA"))
+        spans.extend(self._detect_credit_cards(text))
         spans.extend(self._detect_simple(text, CELL_IT_PATTERN, "CELL_IT"))
         spans.extend(self._detect_simple(text, TEL_IT_PATTERN, "TEL_IT"))
         spans.extend(self._detect_email(text))
@@ -83,12 +100,17 @@ class ItalianPatternDetector:
         spans.extend(self._detect_simple(text, TESSERA_SANITARIA_PATTERN, "TESSERA_SANITARIA"))
         spans.extend(self._detect_matricola_inps(text))
         spans.extend(self._detect_simple(text, DOCUMENTO_ID_PATTERN, "DOCUMENTO_ID"))
+        spans.extend(self._detect_context_value(text, SECRET_PATTERN, "SECRET"))
         spans.extend(self._detect_simple(text, INDIRIZZO_IT_PATTERN, "INDIRIZZO"))
         return sorted(spans, key=lambda span: (span.start, span.end))
 
     def _detect_simple(self, text: str, pattern: re.Pattern[str], label: str) -> Iterable[DetectionSpan]:
         for match in pattern.finditer(text):
             yield DetectionSpan(match.start(), match.end(), label, self.source)
+
+    def _detect_context_value(self, text: str, pattern: re.Pattern[str], label: str) -> Iterable[DetectionSpan]:
+        for match in pattern.finditer(text):
+            yield DetectionSpan(match.start(1), match.end(1), label, self.source)
 
     def _detect_codice_fiscale(self, text: str) -> Iterable[DetectionSpan]:
         for match in CF_PATTERN.finditer(text):
@@ -106,6 +128,10 @@ class ItalianPatternDetector:
             value = match.group(2)
             if validate_partita_iva(value):
                 yield DetectionSpan(match.start(2), match.end(2), "PARTITA_IVA", self.source)
+        for match in PIVA_BARE_PATTERN.finditer(text):
+            value = match.group(1)
+            if validate_partita_iva(value):
+                yield DetectionSpan(match.start(1), match.end(1), "PARTITA_IVA", self.source)
 
     def _detect_iban_it(self, text: str) -> Iterable[DetectionSpan]:
         for match in IBAN_IT_PATTERN.finditer(text):
@@ -128,6 +154,12 @@ class ItalianPatternDetector:
             octets = match.group(0).split(".")
             if all(0 <= int(octet) <= 255 for octet in octets):
                 yield DetectionSpan(match.start(), match.end(), "IP_ADDRESS", self.source)
+
+    def _detect_credit_cards(self, text: str) -> Iterable[DetectionSpan]:
+        for match in CREDIT_CARD_PATTERN.finditer(text):
+            value = re.sub(r"\D", "", match.group(0))
+            if _looks_like_credit_card(value):
+                yield DetectionSpan(match.start(), match.end(), "CARTA_CREDITO", self.source)
 
 
 def validate_codice_fiscale(value: str) -> bool:
@@ -165,3 +197,18 @@ def validate_iban(value: str) -> bool:
     for char in numeric:
         remainder = (remainder * 10 + int(char)) % 97
     return remainder == 1
+
+
+def _looks_like_credit_card(value: str) -> bool:
+    if not 13 <= len(value) <= 19:
+        return False
+    total = 0
+    parity = len(value) % 2
+    for index, char in enumerate(value):
+        digit = int(char)
+        if index % 2 == parity:
+            digit *= 2
+            if digit > 9:
+                digit -= 9
+        total += digit
+    return total % 10 == 0

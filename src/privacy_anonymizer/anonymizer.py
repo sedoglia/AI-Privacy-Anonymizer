@@ -262,15 +262,24 @@ class Anonymizer:
         spans: list[DetectionSpan] = []
         if self.config.parallel and len(tasks) > 1 and not self.config.low_memory:
             logger.info("Rilevamento parallelo: %s", ", ".join(n for n, _ in tasks))
-            from concurrent.futures import ThreadPoolExecutor
+            from concurrent.futures import ThreadPoolExecutor, as_completed
             with ThreadPoolExecutor(max_workers=len(tasks)) as executor:
-                for partial in executor.map(lambda task: task[1](), tasks):
-                    spans.extend(partial)
+                futures = {executor.submit(run): name for name, run in tasks}
+                for future in as_completed(futures):
+                    name = futures[future]
+                    try:
+                        spans.extend(future.result())
+                    except Exception as exc:
+                        logger.warning("Layer %s non disponibile durante il rilevamento: %s", name, exc)
         else:
             for name, run in tasks:
                 logger.info("Layer %s: avvio", name)
                 t0 = time.perf_counter()
-                result = run()
+                try:
+                    result = run()
+                except Exception as exc:
+                    logger.warning("Layer %s non disponibile durante il rilevamento: %s", name, exc)
+                    result = []
                 logger.info("Layer %s: %d span in %.2fs", name, len(result), time.perf_counter() - t0)
                 spans.extend(result)
                 if self.config.low_memory and name == "opf" and self.opf_detector is not None:
@@ -471,6 +480,8 @@ def _filter_false_positive_personas(text: str, spans: list[DetectionSpan]) -> li
         if span.label == "PERSONA" and re.search(r"\d", span_text):
             continue
         if span.label == "URL" and not _URL_LIKE_RE.search(span_text):
+            continue
+        if span.label == "URL" and span_text.lower().strip().endswith(".internal.local"):
             continue
         if span.label == "PATENTE" and span_text.lower().strip() in _PATENTE_VEHICLE_TYPES:
             continue

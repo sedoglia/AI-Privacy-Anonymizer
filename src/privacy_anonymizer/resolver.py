@@ -17,6 +17,13 @@ LABEL_ALIASES = {
     "IBAN_IT": "IBAN_IT",
     "CELL_IT": "TELEFONO_IT",
     "TEL_IT": "TELEFONO_IT",
+    "PASSAPORTO": "PASSAPORTO",
+    "PATENTE": "PATENTE",
+    "CARTA_CREDITO": "CARTA_CREDITO",
+    "IBAN": "IBAN_IT",
+    "TAX_ID": "CODICE_FISCALE",
+    "TELEFONO": "TELEFONO_IT",
+    "SECRET": "SECRET",
     "IP_ADDRESS": "IP_ADDRESS",
 }
 
@@ -46,7 +53,7 @@ def resolve_spans(spans: list[DetectionSpan], max_gap: int = 3, text: str = "") 
     for span in ordered[1:]:
         if span.start <= current_end + max_gap and _compatible(current, span):
             gap_text = text[current_end:span.start] if text else ""
-            if "\n" not in gap_text:
+            if "\n" not in gap_text and not _has_tabular_separator(gap_text):
                 current.append(span)
                 current_end = max(current_end, span.end)
             else:
@@ -96,6 +103,10 @@ def _priority(span: DetectionSpan) -> int:
     return SOURCE_PRIORITY.get(span.source, 0)
 
 
+def _has_tabular_separator(text: str) -> bool:
+    return any(char in text for char in (",", ";", "\t"))
+
+
 def _split_on_newlines(span: DetectionSpan, text: str) -> list[DetectionSpan]:
     """Split a span that crosses newlines into one sub-span per non-empty line."""
     span_text = text[span.start:span.end]
@@ -135,6 +146,7 @@ _FALSE_POSITIVE_WORDS: frozenset[str] = frozenset({
     # Italian column/header names
     "Sesso", "Cognome", "Nome", "Ruolo", "Azienda", "Provincia", "Citta", "Stato",
     "Indirizzo", "CAP", "Data", "Nota", "Note", "Email", "Telefono", "Cellulare",
+    "CF", "PIVA", "IBAN",
     # Common Italian locations
     "Roma", "Milano", "Napoli", "Torino", "Genova", "Palermo", "Bologna", "Firenze",
     "Venezia", "Verona", "Messina", "Catania", "Padova", "Trieste", "Brescia",
@@ -157,4 +169,3 @@ _FALSE_POSITIVE_LOWER: frozenset[str] = frozenset(w.lower() for w in _FALSE_POSI
 
 def _is_false_positive(text: str) -> bool:
     return text in _FALSE_POSITIVE_WORDS or text.lower() in _FALSE_POSITIVE_LOWER
-

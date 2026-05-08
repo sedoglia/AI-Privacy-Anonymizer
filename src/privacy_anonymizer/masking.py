@@ -12,6 +12,9 @@ PREFIXES = {
     "IBAN_IT": "IBAN",
     "TARGA_IT": "TARGA",
     "CARTA_IDENTITA": "CI",
+    "PASSAPORTO": "PASSAPORTO",
+    "PATENTE": "PATENTE",
+    "CARTA_CREDITO": "CC",
     "TELEFONO_IT": "TEL",
     "CELL_IT": "TEL",
     "TEL_IT": "TEL",
@@ -20,6 +23,7 @@ PREFIXES = {
     "IP_ADDRESS": "IP",
     "TESSERA_SANITARIA": "TS",
     "MATRICOLA_INPS": "MATRICOLA",
+    "SECRET": "SECRET",
 }
 
 

@@ -207,6 +207,8 @@ def _find_word_matches(words: list[dict], original: str) -> list[list[dict]]:
     for index in range(0, len(words) - len(target) + 1):
         if normalized_words[index : index + len(target)] == target:
             matches.append(words[index : index + len(target)])
+        elif len(target) == 1 and target[0] in normalized_words[index]:
+            matches.append([words[index]])
     return matches
 
 

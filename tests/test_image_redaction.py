@@ -48,3 +48,45 @@ def test_image_adapter_redacts_ocr_word_boxes(monkeypatch, tmp_path: Path) -> No
 
     assert destination.exists()
     assert "Immagine redatta a coordinate OCR" in result.warnings[0]
+
+
+class FakeRapidOCRPrefixedOutput:
+    def __init__(self):
+        self.boxes = [[[10, 10], [170, 10], [170, 30], [10, 30]]]
+        self.txts = ["PIVA01114601006"]
+        self.scores = [0.99]
+
+
+class FakeRapidOCRPrefixed:
+    def __call__(self, image):
+        return FakeRapidOCRPrefixedOutput()
+
+
+def test_image_adapter_redacts_value_embedded_in_ocr_token(monkeypatch, tmp_path: Path) -> None:
+    import privacy_anonymizer.io.images as images_module
+
+    source = tmp_path / "sample.png"
+    destination = tmp_path / "clean.png"
+    Image.new("RGB", (220, 80), "white").save(source)
+
+    monkeypatch.setattr(images_module, "_import_ocr", lambda: (Image, FakeRapidOCRPrefixed()))
+
+    result = ImageAdapter().write_anonymized(
+        source,
+        destination,
+        "[PIVA_1]",
+        keep_metadata=False,
+        replacements=[
+            ReplacementSpan(
+                start=4,
+                end=15,
+                label="PARTITA_IVA",
+                original="01114601006",
+                replacement="[PIVA_1]",
+            )
+        ],
+        original_text="PIVA01114601006",
+    )
+
+    assert destination.exists()
+    assert "Immagine redatta a coordinate OCR" in result.warnings[0]

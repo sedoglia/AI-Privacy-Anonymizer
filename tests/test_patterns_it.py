@@ -44,3 +44,18 @@ def test_detector_finds_tessera_sanitaria_and_matricola_inps() -> None:
     labels = set(labels_for(text))
     assert "TESSERA_SANITARIA" in labels
     assert "MATRICOLA_INPS" in labels
+
+
+def test_detector_finds_contextual_documents_and_credit_card() -> None:
+    text = "Passaporto: YA1234567 Patente: A12345678 carta 4111 1111 1111 1111"
+    labels = set(labels_for(text))
+    assert "PASSAPORTO" in labels
+    assert "PATENTE" in labels
+    assert "CARTA_CREDITO" in labels
+
+
+def test_detector_finds_bare_piva_and_secret_token() -> None:
+    text = "01114601006 sk-test-1234567890"
+    labels = set(labels_for(text))
+    assert "PARTITA_IVA" in labels
+    assert "SECRET" in labels
