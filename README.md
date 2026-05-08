@@ -305,9 +305,9 @@ File `.exe` autonomo per Windows — nessuna installazione di Python richiesta.
 
 ### Download precompilato (consigliato)
 
-**[⬇ Scarica privacy-anonymizer.exe (Google Drive, ~2.85 GB)](https://drive.google.com/file/d/1B0UpI_RmFGstKsH1ufU8GbownWz4qy7u/view?usp=sharing)**
+**[⬇ Scarica privacy-anonymizer.exe (Google Drive, ~2.68 GB)](https://drive.google.com/file/d/1B0UpI_RmFGstKsH1ufU8GbownWz4qy7u/view?usp=sharing)**
 
-> Il file (~2.85 GB) è distribuito tramite Google Drive perché supera il limite di 2 GB di GitHub.
+> Il file (~2.68 GB) è distribuito tramite Google Drive perché supera il limite di 2 GB di GitHub.
 
 Dopo il download, eseguire dal terminale:
 
@@ -325,7 +325,7 @@ Per rigenerare l'eseguibile in locale:
 pyinstaller dist/privacy_anonymizer.spec --distpath dist --workpath build/pyinstaller
 ```
 
-Output: `dist/privacy-anonymizer.exe` (~2.85 GB). Il bundle include tutti e tre i layer ML (OPF, GLiNER, pattern), RapidOCR, tutti gli adattatori di formato e il runtime Python.
+Output: `dist/privacy-anonymizer.exe` (~2.68 GB). Il bundle include tutti e tre i layer ML (OPF, GLiNER, pattern), RapidOCR, tutti gli adattatori di formato e il runtime Python.
 
 I file di build sono versionati in `dist/`:
 
