@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "ai-privacy-anonymizer"
-version = "0.2.0"
+version = "0.2.1"
 description = "Local-first privacy anonymizer for Italian PII (GDPR-aware)."
 readme = "README.md"
 requires-python = ">=3.11"
