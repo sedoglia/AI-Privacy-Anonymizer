@@ -101,16 +101,8 @@ recommended = [
   "rich>=13.0",
   "gliner>=0.2.5",
 ]
-opf = [
-  # OpenAI Privacy Filter (https://github.com/openai/privacy-filter).
-  # NOTE: the package name `opf` collides with an unrelated PyPI project
-  # ("Open Provenance Format"); always install via this git reference, never
-  # via plain `pip install opf`.
-  "opf @ git+https://github.com/openai/privacy-filter",
-]
 full = [
   "ai-privacy-anonymizer[recommended]",
-  "ai-privacy-anonymizer[opf]",
 ]
 
 [project.scripts]

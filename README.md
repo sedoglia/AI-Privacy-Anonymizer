@@ -15,7 +15,7 @@ Strumento Python locale per rilevare e mascherare automaticamente dati personali
 
 ```bash
 # Installa tutto (ML, PDF, Office, Web UI, API REST)
-pip install "ai-privacy-anonymizer[full]"
+pip install "ai-privacy-anonymizer[recommended]"
 
 # Anonimizza un singolo file
 privacy-anonymizer documento.pdf
@@ -238,31 +238,30 @@ pip install "ai-privacy-anonymizer[webui]"
 pip install "ai-privacy-anonymizer[api]"
 ```
 
-### Setup raccomandato senza OPF (extra `[recommended]`)
+### Setup standard (extra `[recommended]`)
 
 ```bash
 pip install "ai-privacy-anonymizer[recommended]"
 ```
 
-Installa office, documents, ml (GLiNER), webui, api, rich. **Esclude OPF** (Layer 1) per evitare il download di ~3 GB a chi non lo serve. È la scelta consigliata per la maggior parte degli utenti.
+Installa office, documents, ml (GLiNER), webui, api, rich. È la scelta consigliata per la maggior parte degli utenti. Il Layer 1 (OPF) può essere aggiunto separatamente (vedi sotto).
 
-### Setup completo con OPF (extra `[full]`)
+### Installazione con OPF (Layer 1 — opzionale)
+
+OPF (OpenAI Privacy Filter) non è distribuibile come extra PyPI perché risiede solo su GitHub. Per abilitarlo, installalo manualmente **dopo** l'extra `[recommended]`:
 
 ```bash
-pip install "ai-privacy-anonymizer[full]"
+pip install "ai-privacy-anonymizer[recommended]"
+pip install "opf @ git+https://github.com/openai/privacy-filter"
 ```
 
-Installa l'extra `[recommended]` **e in più** OPF dal repository ufficiale (`git+https://github.com/openai/privacy-filter`). Richiede ~5 GB totali tra dipendenze e modelli.
-
-### Comando one-shot (alternativa a `[full]`)
-
-Se hai già installato il pacchetto base, puoi installare tutto con:
+Oppure con il comando integrato:
 
 ```bash
 privacy-anonymizer --install-full
 ```
 
-Esegue internamente `pip install "ai-privacy-anonymizer[recommended]"` seguito dall'installazione di OPF da git.
+Richiede ~5 GB totali tra dipendenze e modelli (3 GB solo per OPF).
 
 ### Sviluppo locale
 
@@ -280,16 +279,6 @@ pytest tests/api/ --ignore=tests/api/test_live.py
 # Test con server live (avviare prima: privacy-anonymizer --api)
 pytest tests/api/test_live.py --live
 ```
-
-### Solo Layer 1 OPF (installazione esterna, separata)
-
-Se non vuoi `[full]` e preferisci installare OPF a parte:
-
-```bash
-pip install git+https://github.com/openai/privacy-filter
-```
-
-Richiede ~3 GB di spazio per il download del modello al primo avvio.
 
 ### Verifica setup
 
