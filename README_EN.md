@@ -1,6 +1,6 @@
 # AI Privacy Anonymizer
 
-**Version:** 0.2.1  
+**Version:** 0.2.2  
 **Author:** Sergio Dogliani  
 **License:** MIT  
 **Python:** ≥ 3.11

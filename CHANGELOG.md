@@ -7,6 +7,19 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ---
 
+## [0.2.2] - 2026-06-07
+
+### Security
+- Resolved all 6 CodeQL code-scanning alerts on `main`:
+  - **ReDoS (`py/polynomial-redos`, high)** — replaced the URL-detection regular expression (`_URL_LIKE_RE`) with `_looks_like_url()`, a linear, backtracking-free string scan. A polynomial regex on uncontrolled data could be driven to quadratic time by a crafted input; the new scan is O(n) with identical match semantics (verified against the URL-filter tests).
+  - **Overly-permissive regex range (`py/overly-large-range`)** — tightened `_NAME_LIKE_RE` to the correct Latin-1 letter ranges (`A-Za-zÀ-ÖØ-öø-ÿ`), removing the over-large `À-Ÿ` range that also matched `×`, `÷` and Latin Extended-A characters.
+  - **Workflow permissions (`actions/missing-workflow-permissions`)** — added an explicit `permissions: contents: read` block to `.github/workflows/tests.yml` to limit the scope of the default `GITHUB_TOKEN`.
+
+### Notes
+- No functional or API changes. Full test suite green (457 passed, 13 skipped).
+
+---
+
 ## [0.2.1] - 2026-05-08
 
 ### Changed
@@ -124,6 +137,7 @@ Initial release. Full feature set for local, offline PII anonymization of Italia
 
 ---
 
+[0.2.2]: https://github.com/sedoglia/AI-Privacy-Anonymizer/releases/tag/v0.2.2
 [0.2.1]: https://github.com/sedoglia/AI-Privacy-Anonymizer/releases/tag/v0.2.1
 [0.2.0]: https://github.com/sedoglia/AI-Privacy-Anonymizer/releases/tag/v0.2.0
 [0.1.0]: https://github.com/sedoglia/AI-Privacy-Anonymizer/releases/tag/v0.1.0
