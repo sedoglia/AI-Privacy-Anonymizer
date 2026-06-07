@@ -452,11 +452,13 @@ def _build_chunks(text: str, chunk_size: int, overlap: int) -> list[tuple[int, i
     return windows
 
 
-_URL_LIKE_RE = re.compile(r"https?://|www\.|[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}", re.I)
-
-# Beyond this length we skip the URL-like validation to avoid quadratic regex
-# backtracking (ReDoS); an already-labelled URL span is kept as-is.
-_MAX_URL_CHECK_LEN = 2048
+# The negative lookbehind anchors each match to the start of an alphanumeric run,
+# so .search() cannot restart inside a long run of characters. This keeps matching
+# linear and avoids polynomial backtracking (ReDoS) on uncontrolled input.
+_URL_LIKE_RE = re.compile(
+    r"https?://|www\.|(?<![-a-zA-Z0-9])[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}",
+    re.I,
+)
 
 # Italian vehicle-type labels that GLiNER sometimes misclassifies as "driver license"
 _PATENTE_VEHICLE_TYPES = frozenset({
@@ -483,11 +485,7 @@ def _filter_false_positive_personas(text: str, spans: list[DetectionSpan]) -> li
         span_text = text[span.start : span.end]
         if span.label == "PERSONA" and re.search(r"\d", span_text):
             continue
-        if (
-            span.label == "URL"
-            and len(span_text) <= _MAX_URL_CHECK_LEN
-            and not _URL_LIKE_RE.search(span_text)
-        ):
+        if span.label == "URL" and not _URL_LIKE_RE.search(span_text):
             continue
         if span.label == "URL" and span_text.lower().strip().endswith(".internal.local"):
             continue
