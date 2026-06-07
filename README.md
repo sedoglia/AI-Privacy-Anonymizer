@@ -9,7 +9,7 @@ Strumento Python locale per rilevare e mascherare automaticamente dati personali
 
 > **[Scarica l'ultima release su GitHub](https://github.com/sedoglia/AI-Privacy-Anonymizer/releases/latest)** — include l'eseguibile Windows precompilato (nessuna installazione di Python richiesta).
 > 
-> Consulta il **[CHANGELOG](CHANGELOG.md)** per la cronologia completa delle versioni.
+> Consulta il **[CHANGELOG](https://github.com/sedoglia/AI-Privacy-Anonymizer/blob/main/CHANGELOG.md)** per la cronologia completa delle versioni.
 
 ---
 

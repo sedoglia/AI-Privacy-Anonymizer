@@ -9,7 +9,7 @@ A local Python tool for automatically detecting and masking personally identifia
 
 > **[Download the latest release on GitHub](https://github.com/sedoglia/AI-Privacy-Anonymizer/releases/latest)** — includes a pre-built Windows executable (no Python installation required).
 > 
-> See the **[CHANGELOG](CHANGELOG.md)** for the full version history.
+> See the **[CHANGELOG](https://github.com/sedoglia/AI-Privacy-Anonymizer/blob/main/CHANGELOG.md)** for the full version history.
 
 ---
 
