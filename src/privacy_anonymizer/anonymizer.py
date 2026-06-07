@@ -452,13 +452,27 @@ def _build_chunks(text: str, chunk_size: int, overlap: int) -> list[tuple[int, i
     return windows
 
 
-# The negative lookbehind anchors each match to the start of an alphanumeric run,
-# so .search() cannot restart inside a long run of characters. This keeps matching
-# linear and avoids polynomial backtracking (ReDoS) on uncontrolled input.
-_URL_LIKE_RE = re.compile(
-    r"https?://|www\.|(?<![-a-zA-Z0-9])[a-zA-Z0-9][-a-zA-Z0-9]*\.[a-zA-Z]{2,}",
-    re.I,
-)
+def _looks_like_url(text: str) -> bool:
+    """Linear, backtracking-free heuristic: does *text* look like a URL?
+
+    Recognizes the same cases as the previous regex (a scheme, ``www.``, or a
+    bare ``label.tld`` domain) using plain string scanning, so it cannot exhibit
+    polynomial backtracking (ReDoS) on uncontrolled input.
+    """
+    low = text.lower()
+    if "://" in low or "www." in low:
+        return True
+    # Bare domain: an ascii-alphanumeric label char, a dot, then a 2+ letter TLD.
+    dot = low.find(".")
+    while dot != -1:
+        if dot > 0 and low[dot - 1].isascii() and low[dot - 1].isalnum():
+            end = dot + 1
+            while end < len(low) and low[end].isascii() and low[end].isalpha():
+                end += 1
+            if end - (dot + 1) >= 2:
+                return True
+        dot = low.find(".", dot + 1)
+    return False
 
 # Italian vehicle-type labels that GLiNER sometimes misclassifies as "driver license"
 _PATENTE_VEHICLE_TYPES = frozenset({
@@ -485,11 +499,8 @@ def _filter_false_positive_personas(text: str, spans: list[DetectionSpan]) -> li
         span_text = text[span.start : span.end]
         if span.label == "PERSONA" and re.search(r"\d", span_text):
             continue
-        if span.label == "URL" and len(span_text) <= 2048:
-            # Bound the regex input length (ReDoS guard on uncontrolled data); an
-            # over-long span is implausible for a URL and left untouched here.
-            if not _URL_LIKE_RE.search(span_text):
-                continue
+        if span.label == "URL" and not _looks_like_url(span_text):
+            continue
         if span.label == "URL" and span_text.lower().strip().endswith(".internal.local"):
             continue
         if span.label == "PATENTE" and span_text.lower().strip() in _PATENTE_VEHICLE_TYPES:
