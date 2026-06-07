@@ -485,8 +485,11 @@ def _filter_false_positive_personas(text: str, spans: list[DetectionSpan]) -> li
         span_text = text[span.start : span.end]
         if span.label == "PERSONA" and re.search(r"\d", span_text):
             continue
-        if span.label == "URL" and not _URL_LIKE_RE.search(span_text):
-            continue
+        if span.label == "URL" and len(span_text) <= 2048:
+            # Bound the regex input length (ReDoS guard on uncontrolled data); an
+            # over-long span is implausible for a URL and left untouched here.
+            if not _URL_LIKE_RE.search(span_text):
+                continue
         if span.label == "URL" and span_text.lower().strip().endswith(".internal.local"):
             continue
         if span.label == "PATENTE" and span_text.lower().strip() in _PATENTE_VEHICLE_TYPES:
